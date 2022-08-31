@@ -1,0 +1,17 @@
+# Exclude config files
+*.ini
+
+# Exclude .NET assemblies from source
+*.dll
+
+# Exclude Log files
+Log/*
+
+# Exclude Output files
+Output/*
+
+# Exclude Sample
+Sample/
+
+# Exclude draft in Lib
+Lib/-*.ps1
