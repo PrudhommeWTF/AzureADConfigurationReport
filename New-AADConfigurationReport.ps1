@@ -11,179 +11,6 @@ try {
 catch {
     throw $_
 }
-Function Write-LogFileEntry {
-    <#
-        .SYNOPSIS
-        Write formated entry in the PowerShell Host and a file.
-
-        .DESCRIPTION
-        Function to write message within the PowerShell Host and persist it into a select file.
-
-        .PARAMETER Info
-        Message to write as basic information.
-        It will be displayed as Verbose in the PowerShell Host.
-
-        .PARAMETER Warning
-        Message to write as a warning information.
-        It will be displayed as Warning in the PowerShell Host.
-
-        .PARAMETER Debugging
-        Message to write as a debugging information.
-        It will be displayed as Debug in the PowerShell Host
-
-        .PARAMETER ErrorMessage
-        Message to write as error information.
-        It will be de displayed as an Error message in the PowerShell Host.
-
-        .PARAMETER Success
-        Message to write as a success information.
-        It will be displayed in grenn as a successfull message in the PowerShell Host.
-
-        .PARAMETER ErrorRecord
-        Used to complete the ErrorMessage parameter with the Error Object that may have been generated.
-        This information will be displayed in the persistance file.
-
-        .PARAMETER LogFile
-        Specify the file to write messages in.
-
-        .NOTES
-        Author: Thomas Prud'homme (Blog: https://blog.prudhomme.wtf Tw: @Prudhomme_WTF).
-
-        .LINK
-        https://github.com/PrudhommeWTF/Stuffs/blob/master/Write-LogFileEntry/Write-LogFileEntry.md
-
-        .INPUTS
-        System.String
-
-        .OUTPUTS
-        System.IO.File
-    #>
-    [CmdletBinding(
-        DefaultParameterSetName = 'Info',
-        SupportsShouldProcess   = $true,
-        ConfirmImpact           = 'Medium',
-        HelpUri                 = 'https://github.com/PrudhommeWTF/Stuffs/blob/master/Write-LogFileEntry/Write-LogFileEntry.md'
-    )]
-    Param(
-        [Parameter(
-            Mandatory                       = $true,
-            ValueFromPipelineByPropertyName = $true,
-            ParameterSetName                = 'Info'
-        )]
-        [ValidateNotNullOrEmpty()]
-        [Alias('Message')]
-        [String]$Info,
-
-        [Parameter(
-            Mandatory                       = $true,
-            ValueFromPipelineByPropertyName = $true,
-            ParameterSetName                = 'Warning'
-        )]
-        [ValidateNotNullOrEmpty()]
-        [String]$Warning,
-
-        [Parameter(
-            Mandatory                       = $true,
-            ValueFromPipelineByPropertyName = $true,
-            ParameterSetName                = 'Debugging'
-        )]
-        [ValidateNotNullOrEmpty()]
-        [String]$Debugging,
-
-        [Parameter(
-            Mandatory                       = $true,
-            ValueFromPipelineByPropertyName = $true,
-            ParameterSetName                = 'ErrorMessage'
-        )]
-        [ValidateNotNullOrEmpty()]
-        [String]$ErrorMessage,
-
-        [Parameter(
-            Mandatory                       = $true,
-            ValueFromPipelineByPropertyName = $true,
-            ParameterSetName                = 'Success'
-        )]
-        [ValidateNotNullOrEmpty()]
-        [String]$Success,
-
-        [Parameter(
-            ValueFromPipeline               = $true,
-            ValueFromPipelineByPropertyName = $true,
-            ValueFromRemainingArguments     = $false,
-            ParameterSetName                = 'ErrorMessage'
-        )]
-        [ValidateNotNullOrEmpty()]
-        [Alias('Record')]
-        [Management.Automation.ErrorRecord]$ErrorRecord,
-
-        [Parameter(
-            Mandatory                       = $true,
-            ValueFromPipelineByPropertyName = $true
-        )]
-        [Alias('File', 'Location')]
-        [String]$LogFile
-    )
-    if (!(Test-Path -Path $LogFile)) {
-        try {
-            $null = New-Item -Path $LogFile -ItemType File -Force
-        }
-        catch {
-            Write-Error -Message 'Error creating log file'
-            break
-        }
-    }
-    $MutexName = 'AzureADConfigReport'
-    try {
-        $Mutex = [Threading.Mutex]::OpenExisting($MutexName)
-    }
-    catch {
-        $Mutex = New-Object -TypeName 'Threading.Mutex' -ArgumentList $false, $MutexName
-    }
-
-    switch ($PSBoundParameters.Keys) {
-         'ErrorMessage' {
-            Write-Host -Object "ERROR  : [$([DateTime]::Now)] $ErrorMessage" -ForegroundColor Red
-            $null = $Mutex.WaitOne()
-            Add-Content -Path $LogFile -Value "$([DateTime]::Now) [ERROR]: $ErrorMessage"
-            if ($PSBoundParameters.ContainsKey('ErrorRecord')) {
-                $Details = '{0} ({1}: {2}:{3} char:{4})' -f $ErrorRecord.Exception.Message, $ErrorRecord.FullyQualifiedErrorId, $ErrorRecord.InvocationInfo.ScriptName, $ErrorRecord.InvocationInfo.ScriptLineNumber, $ErrorRecord.InvocationInfo.OffsetInLine
-                Write-Host -Object "ERROR  : [$([DateTime]::Now)] $Details" -ForegroundColor Red
-                Add-Content -Path $LogFile -Value "$([DateTime]::Now) [ERROR]: $Details"
-            }
-            $null = $Mutex.ReleaseMutex()
-            Continue
-         }
-         'Info' {
-            $VerbosePreference = 'Continue'
-            Write-Verbose -Message "[$([DateTime]::Now)] $Info"
-            $null = $Mutex.WaitOne()
-            Add-Content -Path $LogFile -Value "$([DateTime]::Now) [INFO]: $Info"
-            $null = $Mutex.ReleaseMutex()
-            Continue
-         }
-         'Debugging' {
-            Write-Debug -Message "$Debugging"
-            $null = $Mutex.WaitOne()
-            Add-Content -Path $LogFile -Value "$([DateTime]::Now) [DEBUG]: $Debugging"
-            $null = $Mutex.ReleaseMutex()
-            Continue
-         }
-         'Warning' {
-            Write-Warning -Message "[$([DateTime]::Now)] $Warning"
-            $null = $Mutex.WaitOne()
-            Add-Content -Path $LogFile -Value "$([DateTime]::Now) [WARNING]: $Warning"
-            $null = $Mutex.ReleaseMutex()
-            Continue
-         }
-         'Success' {
-            Write-Host -Object "SUCCESS: [$([DateTime]::Now)] $Success" -ForegroundColor Green
-            $null = $Mutex.WaitOne()
-            Add-Content -Path $LogFile -Value "$([DateTime]::Now) [SUCCESS]: $Success"
-            $null = $Mutex.ReleaseMutex()
-            Continue
-         }
-    }
-}
 Function New-PSHtmlBootstrapTable {
     <#
         .PARAMETER PropertiesMap
@@ -291,13 +118,7 @@ Function New-PSHtmlChartJS {
 
     New-PSHtmlDiv -Content {
         New-PSHtmlCanvas -id $ChartId 
-        New-PSHtmlScript -Content @'
-const {0}Config = {1}
-const $ChartId = new Chart(
-    document.getElementById('{0}'),
-    {0}Config
-);
-'@ -f $ChartId, $($Config | ConvertTo-Json -Depth 99 -Compress)
+        New-PSHtmlScript -Content "const $ChartId = new Chart(document.getElementById('$ChartId'), $($Config | ConvertTo-Json -Depth 99 -Compress));"
     }
 }
 Function Invoke-ParallelRunSpace{
@@ -545,12 +366,9 @@ Function Set-ConfigurationFile {
 
 #region Init
 $Start = Get-Date
-$PSDefaultParameterValues = @{
-    'Write-LogFileEntry:LogFile' = '{0}\Log\{1:yyyyMMdd_HHmm}.log' -f $PSScriptRoot, $Start
-}
 $ScriptTitle = 'Azure AD Configuration Report'
 
-Write-LogFileEntry -Info ('{0} script started.' -f $ScriptTitle)
+Write-Output -InputObject ('{0} script started.' -f $ScriptTitle)
 
 $Categories = @(
     @{
@@ -587,6 +405,19 @@ $Categories = @(
         Description = 'Other indicators and checks that are not related to previous categories'
     }
 )
+$HtmlCredits = @(
+    @{
+        Text = 'Bootstrap'
+        Href = 'https://getbootstrap.com/'
+    }, @{
+        Text = 'Bootstrap Table'
+        Href = 'https://bootstrap-table.com/'
+    }, @{
+        Text = 'ChartJS'
+        Href = 'https://www.chartjs.org/'
+    }
+)
+[Collections.ArrayList]$Indicators = @()
 
 #region Select config file
 if ([String]::IsNullOrWhiteSpace($ConfigFileBaseName)) {
@@ -624,19 +455,19 @@ if ([String]::IsNullOrWhiteSpace($ConfigFileBaseName)) {
         catch {throw $_}
     }
 } else {
-    Write-LogFileEntry -Info "Loading specified config file: $ConfigFileBaseName"
+    Write-Output -InputObject "Loading specified config file: $ConfigFileBaseName"
     try {
         $LoadedConfig = Import-Clixml -Path ($AvailableConfigs | Where-Object -FilterScript {$_.BaseName -eq $ConfigFileBaseName}).FullName
-        Write-LogFileEntry -Success "Loaded config for: $ConfigFileBaseName"
+        Write-Host -ForegroundColor 'Green' -Object "Loaded config for: $ConfigFileBaseName"
     }
     catch {
-        Write-LogFileEntry -ErrorMessage "Failed loading config for: $ConfigFileBaseName" -ErrorRecord $_
-        Exit
+        Write-Host -ForegroundColor 'Red' -Object "Failed loading config for: $ConfigFileBaseName"
+        throw $_
     }
 }
 #endregion Select config file
 
-Write-LogFileEntry -Info "Trying to get a Graph API Access Token for tenant: $($LoadedConfig.TenantId)"
+Write-Output -InputObject "Trying to get a Graph API Access Token for tenant: $($LoadedConfig.TenantId)"
 try {
     $GraphToken = Invoke-RestMethod -Method 'POST' -Uri "https://login.microsoftonline.com/$($LoadedConfig.TenantId)/oauth2/v2.0/token" -Body @{
         client_id     = $LoadedConfig.AppId
@@ -644,19 +475,17 @@ try {
         scope         = 'https://graph.microsoft.com/.default'
         grant_type    = 'client_credentials'
     } -ContentType 'application/x-www-form-urlencoded' -ErrorAction Stop | Select-Object -ExpandProperty 'access_token'
-    Write-LogFileEntry -Success "Gathered a Graph API Access Token on tenant: $($LoadedConfig.TenantId)"
+    Write-Host -ForegroundColor 'Green' -Object "Gathered a Graph API Access Token on tenant: $($LoadedConfig.TenantId)"
 }
 catch {
-    Write-LogFileEntry -ErrorMessage "Failed getting Graph API Access Token on tenant: $($LoadedConfig.TenantId)" -ErrorRecord $_
-    Exit
+    Write-Host -ForegroundColor 'Red' -Object "Failed getting Graph API Access Token on tenant: $($LoadedConfig.TenantId)"
+    throw $_
 }
-
-[Collections.ArrayList]$Indicators = @()
 #endregion Init
 
 #region Main
 #region Gathering Azure AD Data
-Write-LogFileEntry -Info 'Loading Tenant Information and Check Rules scripts.'
+Write-Output -InputObject 'Loading Tenant Information and Check Rules scripts.'
 $Scriptblocks = @(
     (Get-ChildItem -Path "$PSScriptRoot\lib" -Filter 'TI*-*.ps1')
     (Get-ChildItem -Path "$PSScriptRoot\lib" -Filter 'CR*-*.ps1')
@@ -664,16 +493,16 @@ $Scriptblocks = @(
     (Get-Command $_.FullName).ScriptBlock
 }
 
-Write-LogFileEntry -Info "Start running scripts over target tenant: $($LoadedConfig.TenantId)"
+Write-Output -InputObject "Start running scripts over target tenant: $($LoadedConfig.TenantId)"
 try {
     $Outputs = Invoke-ParallelRunSpace -Scriptblock $Scriptblocks -Parameter @{
         GraphAPIAccessToken = $GraphToken
     } -ErrorAction Stop | Select-Object -ExpandProperty Result
-    Write-LogFileEntry -Success 'Gathered scripts outputs'
+    Write-Host -ForegroundColor 'Green' -Object 'Gathered scripts outputs'
 }
 catch {
-    Write-LogFileEntry -ErrorMessage 'Failed gathering scripts outputs' -ErrorRecord $_
-    Exit
+    Write-Host -ForegroundColor 'Red' -Object 'Failed gathering scripts outputs'
+    throw $_
 }
 
 $TenantInfoBasics = ($Outputs | Where-Object -FilterScript {$_.Id -eq 'TI0001'}).Result
@@ -697,7 +526,7 @@ $IndicatorsHistory = Get-ChildItem -Path "$PSScriptRoot\Output\" -Filter "$Initi
 #endregion Gathering Reports Indicator History (XML Files)
 
 #region Generating HTML and XML Output File
-Write-LogFileEntry -Info 'Start generating HTML content and file'
+Write-Output -InputObject 'Start generating HTML content and file'
 New-PSHtmlHtml -lang 'en' -Content {
     New-PSHtmlHead -Content {
         New-PSHtmlMeta -charset 'utf-8'
@@ -709,32 +538,8 @@ New-PSHtmlHtml -lang 'en' -Content {
         New-PSHtmlScript -src 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js'
         New-PSHtmlScript -src 'https://unpkg.com/bootstrap-table@1.20.2/dist/bootstrap-table.min.js'
         New-PSHtmlScript -src 'https://cdn.jsdelivr.net/npm/chart.js'
-        New-PSHtmlStyle -Content @'
-.form-control-dark {color: #fff; background-color: rgba(255, 255, 255, .1);}
-.form-control-dark:focus {box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);}          
-.sidebar {position: fixed;top: 0;bottom: 0;left: 0;z-index: 100;padding: 48px 0 0;}
-.dropdown-toggle { outline: 0; }
-.accordion-body.bg-dark {color: white;}
-.btn-toggle,.btn-toggle-nochild {padding: .25rem .5rem; font-weight: 600;}
-.btn-toggle.btn-light::before {width: 1.25em; line-height: 0; content: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e");}
-.btn-toggle.btn-dark::before {width: 1.25em; line-height: 0; content: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e");}
-.btn-toggle-nav a {padding: .1875rem .5rem; margin-top: .125rem; margin-left: 1.25rem;}
-'@
-        New-PSHtmlScript -lang 'javascript' -Content @'
-function searchNavbar() {
-    let input = document.getElementById('searchBar').value
-    input=input.toLowerCase();
-    let x = document.getElementsByClassName('navitem');
-      
-    for (i = 0; i < x.length; i++) { 
-        if (!x[i].innerHTML.toLowerCase().includes(input)) {
-            x[i].style.display="none";
-        } else {
-            x[i].style="";                 
-        }
-    }
-}
-'@
+        New-PSHtmlStyle -Content ".form-control-dark {color: #fff; background-color: rgba(255, 255, 255, .1);} .form-control-dark:focus {box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);} .sidebar {position: fixed;top: 0;bottom: 0;left: 0;z-index: 100;padding: 48px 0 0;} .dropdown-toggle { outline: 0; } .accordion-body.bg-dark {color: white;} .btn-toggle,.btn-toggle-nochild {padding: .25rem .5rem; font-weight: 600;} .btn-toggle.btn-light::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle.btn-dark::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle-nav a {padding: .1875rem .5rem; margin-top: .125rem; margin-left: 1.25rem;}"
+        New-PSHtmlScript -lang 'javascript' -Content "function searchNavbar() { let input = document.getElementById('searchBar').value; input = input.toLowerCase(); let x = document.getElementsByClassName('navitem'); for (i = 0; i < x.length; i++) { if (!x[i].innerHTML.toLowerCase().includes(input)) { x[i].style.display=`"none`" } else { x[i].style=`"`" } } }"
     }
     New-PSHtmlBody -Content {
         New-PSHtmlHeader -class 'navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 border-bottom' -Content {
@@ -818,11 +623,10 @@ function searchNavbar() {
                         } -Content {
                             New-PSHtmlP -Content 'Open source components:'
                             New-PSHtmlUl -Content {
-                                New-PSHtmlLi -Content {
-                                    New-PSHtmlA -Href 'https://getbootstrap.com/' -Content 'Bootstrap'
-                                }
-                                New-PSHtmlLi -Content {
-                                    New-PSHtmlA -Href 'https://bootstrap-table.com/' -Content 'Bootstrap Table'
+                                foreach ($entry in $HtmlCredits) {
+                                    New-PSHtmlLi -Content {
+                                        New-PShtmlA -Href $entry.Href -Content $entry.Text -target '_blank'
+                                    }
                                 }
                             }
                         }
@@ -1389,22 +1193,8 @@ function searchNavbar() {
             }
         }
         New-PSHtmlScript -Content @'
-/**
-*  Light Switch
-*/
-
 (function () {
-    let lightSwitch = document.getElementById('lightSwitch');
-    if (!lightSwitch) {
-        return;
-    }
-
-    /**
-     * @function darkmode
-     * @summary: changes the theme to 'dark mode' and save settings to local stroage.
-     * Basically, replaces/toggles every CSS class that has '-light' class with '-dark'
-     */
-    function darkMode() {
+    if (lightSwitch.checked) {
         document.querySelectorAll('.bg-light').forEach((element) => {
             element.className = element.className.replace(/-light/g, '-dark');
         });
@@ -1423,7 +1213,6 @@ function searchNavbar() {
         // Tables
         var tables = document.querySelectorAll('table');
         for (var i = 0; i < tables.length; i++) {
-            // add table-dark class to each table
             tables[i].classList.add('table-dark');
         }
 
@@ -1432,13 +1221,7 @@ function searchNavbar() {
             lightSwitch.checked = true;
         }
         localStorage.setItem('lightSwitch', 'dark');
-    }
-
-    /**
-     * @function lightmode
-     * @summary: changes the theme to 'light mode' and save settings to local stroage.
-     */
-    function lightMode() {
+    } else {
         document.querySelectorAll('.bg-dark').forEach((element) => {
             element.className = element.className.replace(/-dark/g, '-light');
         });
@@ -1457,7 +1240,7 @@ function searchNavbar() {
         var tables = document.querySelectorAll('table');
         for (var i = 0; i < tables.length; i++) {
             if (tables[i].classList.contains('table-dark')) {
-            tables[i].classList.remove('table-dark');
+                tables[i].classList.remove('table-dark');
             }
         }
 
@@ -1466,32 +1249,17 @@ function searchNavbar() {
         }
         localStorage.setItem('lightSwitch', 'light');
     }
-
-    /**
-     * @function onToggleMode
-     * @summary: the event handler attached to the switch. calling @darkMode or @lightMode depending on the checked state.
-     */
-    function onToggleMode() {
-        if (lightSwitch.checked) {
-            darkMode();
-        } else {
-            lightMode();
-        }
-    }
-
-    function setup() {
-        lightSwitch.addEventListener('change', onToggleMode);
-        onToggleMode();
-    }
-
-    setup();
-})();        
+}
+let lightSwitch = document.getElementById('lightSwitch');
+lightSwitch.addEventListener('change', onToggleMode);
+onToggleMode();
+})();
 '@
     }
 } | Out-File -FilePath "$OutputFilePath.html" -Encoding 'utf8' -Force
 
 #Out XML File
-Write-LogFileEntry -Info 'Start generating XML content and file'
+Write-Output -InputObject 'Start generating XML content and file'
 @{
     Indicators = $Indicators
     RawData    = $Outputs
@@ -1499,10 +1267,10 @@ Write-LogFileEntry -Info 'Start generating XML content and file'
 #endregion Generating HTML and XML Output File
 
 #Write end message and open HTML File
-Write-LogFileEntry -Info "Script took $(New-TimeSpan -Start $Start -End (Get-Date)) to run."
-Write-LogFileEntry -Info 'Output files are available:'
-Write-LogFileEntry -Info "`tHTML: $OutputFilePath.html"
-Write-LogFileEntry -Info "`tXML : $OutputFilePath.xml"
+Write-Output -InputObject "Script took $(New-TimeSpan -Start $Start -End (Get-Date)) to run."
+Write-Output -InputObject 'Output files are available:'
+Write-Output -InputObject "`tHTML: $OutputFilePath.html"
+Write-Output -InputObject "`tXML : $OutputFilePath.xml"
 
 if ($OpenHtml) {
     Start-Process -FilePath "$OutputFilePath.html"
