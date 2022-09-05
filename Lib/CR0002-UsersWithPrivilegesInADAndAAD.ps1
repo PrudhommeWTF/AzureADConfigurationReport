@@ -288,7 +288,6 @@ if ((Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain -eq $true) {
             $Output.Result.Remediation = "None"
             $Output.Result.Status      = "Pass"
         }
-        $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
     }
     catch {
         $_ | Write-Error
@@ -296,4 +295,6 @@ if ((Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain -eq $true) {
 } else {
     $Output.Result.Data = 'Script started from a computer outside of Active Directory Domain Service.'
 }
+
+$Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

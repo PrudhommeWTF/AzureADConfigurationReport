@@ -100,10 +100,10 @@ try {
     $Output.Result.Message     = 'No evidence of exposure'
     $Output.Result.Remediation = 'None'
     $Output.Result.Data        = $DomainFederationConfig
-    $Output.Result.Timespan    = [String](New-TimeSpan -Start $Start -End (Get-Date))
 }
 catch {
     $_ | Write-Error
 }
 
+$Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

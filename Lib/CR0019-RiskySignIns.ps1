@@ -106,6 +106,6 @@ if ($null -eq $RiskySignins) {
     $Output.Result.Remediation   = $Output.Remediation
     $Output.Result.Data          = $RiskySignins
 }
-$Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 
+$Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

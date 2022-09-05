@@ -105,10 +105,10 @@ try {
         $Output.Result.Remediation = "None"
         $Output.Result.Status = "Pass"
     }
-    $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 }
 catch {
     Write-Error $_
 }
 
+$Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output
