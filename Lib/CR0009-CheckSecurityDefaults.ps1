@@ -1,19 +1,4 @@
-﻿<#
-REFERENCE:
-https://docs.microsoft.com/en-us/graph/api/resources/identitysecuritydefaultsenforcementpolicy?view=graph-rest-1.0
-
-REQUIRED ACCESS TO READ POLICIES:
-Policy.Read.All
-
-Security defaults and conditional access policies are mutually exclusive
-In this indicator, we check:
-Are there any enabled Conditional Access Policies?
-- If YES, do nothing
-- If NO, check to see if Security Defaults are enabled
-  - If YES, indicator passes
-  - If NO, indicator fails
-#>
-[CmdletBinding(
+﻿[CmdletBinding(
     DefaultParameterSetName = 'Default'
 )]
 Param(
@@ -42,6 +27,7 @@ Param(
     [String]$TenantAppSecret
 )
 
+#region Init
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0009'
@@ -96,6 +82,15 @@ catch {
 #endregion GraphAPI Connection
 
 try {
+    <#
+        Security defaults and conditional access policies are mutually exclusive
+        In this indicator, we check:
+        Are there any enabled Conditional Access Policies?
+        - If YES, do nothing
+        - If NO, check to see if Security Defaults are enabled
+        - If YES, indicator passes
+        - If NO, indicator fails
+    #>
     $GetConditionalPolicies = @{
         Method = 'GET'
         Uri = 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies'

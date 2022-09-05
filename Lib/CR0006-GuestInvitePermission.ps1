@@ -1,11 +1,4 @@
-﻿<#
-REFERENCE:
-https://docs.microsoft.com/en-us/graph/api/authorizationpolicy-get?view=graph-rest-1.0
-
-REQUIRED ACCESS TO READ POLICIES:
-Policy.Read.All
-#>
-[CmdletBinding(
+﻿[CmdletBinding(
     DefaultParameterSetName = 'Default'
 )]
 Param(
@@ -34,6 +27,7 @@ Param(
     [String]$TenantAppSecret
 )
 
+#region Init
 $Start = Get-Date
 $Output = @{
     ID                     = 'CR0006'

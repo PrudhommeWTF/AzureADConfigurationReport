@@ -1,0 +1,121 @@
+[CmdletBinding(
+    DefaultParameterSetName = 'Default'
+)]
+Param(
+    [Parameter(
+        ParameterSetName = 'GraphAPIAccessToken',
+        Mandatory = $true
+    )]
+    [String]$GraphAPIAccessToken,
+
+    [Parameter(
+        ParameterSetName = 'Default',
+        Mandatory = $true
+    )]
+    [String]$TenantId,
+
+    [Parameter(
+        ParameterSetName = 'Default',
+        Mandatory = $true
+    )]
+    [String]$TenantAppId,
+
+    [Parameter(
+        ParameterSetName = 'Default',
+        Mandatory = $true
+    )]
+    [String]$TenantAppSecret
+)
+
+#region Init
+$Start  = Get-Date
+$Output = @{
+    ID                     = 'CR0025'
+    Version                = [Version]'1.0.0.0'
+    CategoryId             = 2
+    Title                  = 'Trusted Locations are defined'
+    ScriptName             = 'CR0025-TustedLocationIsUsed'
+    Description            = 'Azure Active Directory Conditional Access allows an organization to configure Named locations and configure whether those locations are trusted or untrusted. These settings provide organizations the means to specify Geographical locations for use in conditional access policies, or define actual IP addresses and IP ranges and whether or not those IP addresses and/or ranges are trusted by the organization.'
+    Weight                 = 2 #0 to 7. 0 being informational and 7 being critical
+    Severity               = 'Informational' #Informational, Warning or Critical
+    LikelihoodOfCompromise = 'Defining trusted source IP addresses or ranges helps organizations create and enforce Conditional Access Policies around those trusted or untrusted IP addresses and ranges. Users authenticating from trusted IP addresses and/or ranges may have less access restrictions or access requirements when compared to users that try to authenticate to Azure Active Directory from untrusted locations or untrusted source IP addresses/ranges.'
+    ResultMessage          = 'Named Locations is not configured. It is recommanded to configure them and use them in Conditional Access Policies.'
+    Remediation            = @'
+Navigate to the following blade in the Azure AD Portal > Security > Named Locations. Configure the IP or Country locations following your business rules. Configure your Conditional Access Policies to use as inclusion or exclusion scope the configure Named Locations.
+In general, Conditional Access policies may completely prevent users from authenticating to Azure Active Directory, and thorough testing is recommended. To avoid complete lockout, a 'Break Glass' account with full Global Administrator rights is recommended in the event all other administrators are locked out of authenticating to Azure Active Directory. This 'Break Glass' account should be excluded from Conditional Access Policies and should be configured with the longest pass phrase feasible. This account should only be used in the event of an emergency and complete administrator lockout.
+'@
+    Permissions            = @('Policy.Read.All')
+    SecurityFrameworks = @(
+        @{
+            Name = 'MITRE ATT&CK'
+            Tags = @('T1098.001 - Account Manipulation: Additional Cloud Credentials', 'TA0001 - Initial Access', 'M1030 - Network Segmentation')
+        }
+    )
+    Result                 = @{
+        Score       = 0
+        Status      = ''
+        Message     = ''
+        Remediation = ''
+        Data        = ''
+        Timespan    = ''
+        GraphAPI    = ''
+    }
+}
+#endregion Init
+
+#region GraphAPI Connection
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'Default') {
+        $GraphToken = Invoke-RestMethod -Method 'POST' -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body @{
+            client_id = $TenantAppId
+            client_secret = $TenantAppSecret
+            scope = 'https://graph.microsoft.com/.default'
+            grant_type = 'client_credentials'
+        } -ContentType 'application/x-www-form-urlencoded' | Select-Object -ExpandProperty 'access_token'
+    } else {
+        $GraphToken = $GraphAPIAccessToken
+    }
+    $Output.Result.GraphAPI = 'Success'
+}
+catch {
+    $_ | Write-Error
+    $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    exit
+}
+#endregion GraphAPI Connection
+
+try {
+    $GetNamedLocations = @{
+        Method = 'GET'
+        Uri = 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/namedLocations'
+        ContentType = 'application/json'
+        Headers = @{
+            Authorization = "Bearer $GraphToken"
+        }
+    }
+    try {
+        $NamedLocations = Invoke-RestMethod @GetNamedLocations
+    }
+    catch {
+        $_ | Write-Error
+        Continue
+    }
+
+    if ($null -eq $NamedLocations) {
+        $Output.Result.Score       = 0
+        $Output.Result.Message     = $Output.ResultMessage
+        $Output.Result.Remediation = $Output.Remediation
+        $Output.Result.Status      = 'Failed'
+    } else {
+        $Output.Result.Score       = 100
+        $Output.Result.Data        = $NamedLocations
+        $Output.Result.Message     = 'No evidence of exposure'
+        $Output.Result.Remediation = 'None'
+        $Output.Result.Status      = 'Pass'
+    }
+    $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
+}
+catch {
+    $_ | Write-Error
+}
+[PSCustomObject]$Output

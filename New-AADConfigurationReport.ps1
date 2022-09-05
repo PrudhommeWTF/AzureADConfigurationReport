@@ -208,18 +208,17 @@ Function Invoke-ParallelRunSpace{
     $RunspacePool.Dispose()
 }
 Function Set-ConfigurationFile {
-    $xaml = @'
+    $xaml = @"
 <Window
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    SizeToContent="Height"
-    Title="Azure AD Configuration Report - Configuration Tool"
-    Topmost="True">
+    Title="$($global:ScriptTitle) - Configuration Tool">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="100"/>
+            <ColumnDefinition Width="400"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -234,7 +233,8 @@ Function Set-ConfigurationFile {
       
         <TextBlock Grid.Column="0" Grid.Row="0" Margin="5">Configuration Name</TextBlock>
         <ComboBox Name="ConfigName" Grid.Column="1" Grid.Row="0" IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"></ComboBox>
-        <Button Name="BtnLoadConfig" Grid.Column="2" Grid.Row="0" Width="80">Load Config</Button>
+        <Button Name="BtnCreateAzureApp" Grid.Column="2" Grid.Row="0" Width="80">Create Azure AD Application</Button>
+        <Button Name="BtnLoadConfig" Grid.Column="3" Grid.Row="0" Width="80">Load Existing Configuration</Button>
 
         <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" Margin="5">Please Azure AD details:</TextBlock>
 
@@ -252,7 +252,7 @@ Function Set-ConfigurationFile {
         </StackPanel>
     </Grid>
 </Window>
-'@
+"@
 
     #region Code Behind
     Function Convert-XAMLtoWindow {
@@ -306,45 +306,115 @@ Function Set-ConfigurationFile {
     }
 
     #Disable controls until a config is loaded or created
-    $window.AppId.IsEnabled = $window.AppSecret.IsEnabled = $window.TenantId.IsEnabled = $false # = $window.CheckRules.IsEnabled
-    $window.BtnLoadConfig.add_Click(
-        {
-            #Enable Controls
-            $window.AppId.IsEnabled = $window.AppSecret.IsEnabled = $window.TenantId.IsEnabled = $true # = $window.CheckRules.IsEnabled
-            if (Test-Path -Path "$PSScriptRoot\$($window.ConfigName.Text).ini") {
-                $Config = Import-Clixml -Path "$PSScriptRoot\$($window.ConfigName.Text).ini"
-                $window.TenantId.Text  = $Config.TenantId
-                $window.AppId.Text     = $Config.AppId
-                $window.AppSecret.Text = $Config.Secret
-                #$window.CheckRules.ItemsSource = foreach ($entry in (Get-ChildItem -Path $PSScriptRoot -Filter 'CR*-*.ps1')) {
-                #    if ($entry.Name -in $Config.Scripts) {
-                #        [PSCustomObject]@{
-                #            Name    = $entry.Name
-                #            Enabled = $true
-                #        }
-                #    } else {
-                #        [PSCustomObject]@{
-                #            Name    = $entry.Name
-                #            Enabled = $false
-                #        }
-                #    }
-                #}
-            } else {
-                #$window.CheckRules.ItemsSource = @(Get-ChildItem -Path $PSScriptRoot -Filter 'CR*-*.ps1')
-            }
+    $window.AppId.IsEnabled = $window.AppSecret.IsEnabled = $window.TenantId.IsEnabled = $false
+    $window.BtnLoadConfig.add_Click({
+        #Enable Controls
+        $window.AppId.IsEnabled = $window.AppSecret.IsEnabled = $window.TenantId.IsEnabled = $true
+        if (Test-Path -Path "$PSScriptRoot\$($window.ConfigName.Text).ini") {
+            $Config = Import-Clixml -Path "$PSScriptRoot\$($window.ConfigName.Text).ini"
+            $window.TenantId.Text  = $Config.TenantId
+            $window.AppId.Text     = $Config.AppId
+            $window.AppSecret.Text = $Config.Secret
         }
-    )
+    })
+    $window.BtnCreateAzureApp.add_Click({
+        try {
+            Import-Module -Name AzureAD
+        }
+        catch {
+            Write-Warning -Message 'Failed loading AzureAD PowerShell module.'
 
-    $window.BtnCancel.add_Click(
-    {
+            #Write encoutered error
+            $_ | Write-Error
+
+            #Close the window
+            $window.DialogResult = $false
+            
+            #Exit script
+            Exit
+        }
+
+        try {
+            $AzureADDetails = Connect-AzureAD
+        }
+        catch {
+            Write-Warning -Message 'Failed connecting Azure AD with AzureAD module.'
+            #Write encoutered error
+            $_ | Write-Error
+
+            #Close the window
+            $window.DialogResult = $false
+            
+            #Exit script
+            Exit
+        }
+
+        $MSGraphAppId = '00000003-0000-0000-c000-000000000000'
+        $MSGraphAppRole = @(
+            @{Role = 'RoleManagement.Read.Directory';          Id = '483bed4a-2ad3-4361-a73b-c83ccdbdc53c'}
+            @{Role = 'PrivilegedAccess.Read.AzureAD';          Id = '4cdc2547-9148-4295-8d11-be0db1391d6b'}
+            @{Role = 'Directory.Read.All';                     Id = '7ab1d382-f21e-4acd-a863-ba3e13f7da61'}
+            @{Role = 'RoleEligibilitySchedule.Read.Directory'; Id = ''}
+            @{Role = 'AdministrativeUnit.Read.All';            Id = '134fd756-38ce-4afd-ba33-e9623dbe66c2'}
+            @{Role = 'Policy.Read.All';                        Id = '246dd0d5-5bd0-4def-940b-0421030a5b68'}
+            @{Role = 'Reports.Read.All';                       Id = '230c1aed-a721-4c5d-9cb4-a90514e508ef'}
+            @{Role = 'Application.Read.All';                   Id = '9a5d68dd-52b0-4cc2-bd40-abcf44ac3a30'}
+            @{Role = 'IdentityRiskEvent.Read.All';             Id = '6e472fd1-ad78-48da-a0f0-97ab2c6b769e'}
+            @{Role = 'Domain.Read.All';                        Id = 'dbb9058a-0e50-45d7-ae91-66909b5d4664'}
+        )
+        $ReplyUrl = "https://portal.azure.com"
+        $GraphRequiredAccess = New-Object -TypeName "Microsoft.Open.AzureAD.Model.RequiredResourceAccess"
+        $GraphRequiredAccess.ResourceAppId = $MSGraphAppId
+        $AppPermissions = foreach ($roleId in $MSGraphAppRole.Id) {
+            $GraphRequiredAccess.ResourceAccess += New-Object -TypeName "Microsoft.Open.AzureAD.Model.ResourceAccess" -ArgumentList $roleId, 'Role'
+        }
+        
+        #Create the app with all the permissions
+        $appCreationParameters = @{
+            'AvailableToOtherTenants' = $true
+            'DisplayName'             = $global:ScriptTitle
+            'Homepage'                = $ReplyUrl
+            'ReplyUrls'               = $ReplyUrl
+            'RequiredResourceAccess'  = $AppPermissions
+        }
+        try {
+            $AzureADAppCreated = New-AzureADApplication @appCreationParameters
+        }
+        catch {
+            Write-Warning -Message 'Failed creating Azure AD application with AzureAD module.'
+            #Write encoutered error
+            $_ | Write-Error
+
+            #Close the window
+            $window.DialogResult = $false
+            
+            #Exit script
+            Exit
+        }
+
+        $SecretStartDate = Get-Date
+        $AppSecret = New-AzureADApplicationPasswordCredential -ObjectId $AzureADAppCreated.ObjectId -CustomKeyIdentifier $global:ScriptTitle -StartDate $SecretStartDate -EndDate $($SecretStartDate.AddYears(3))
+
+        & ("https://login.microsoftonline.com/{0}/adminconsent?client_id={1}&redirect_uri={2}" -f $AzureADDetails.TenantId, $AzureADAppCreated.AppId, $AzureADAppCreated.ReplyUrls[0])
+
+        $window.AppId.IsEnabled = $window.AppSecret.IsEnabled = $window.TenantId.IsEnabled = $true
+        $window.TenantId.Text  = $AzureADDetails.TenantId
+        $window.AppId.Text     = $AzureADAppCreated.AppId
+        $window.AppSecret.Text = $AppSecret.Value
+
+        [PSCustomObject]@{
+            TenantId = $TenantId
+            AppId    = $AzureADAppCreated.AppId
+            Secret   = $AppSecret.Value
+        } | Export-Clixml -Path "$PSScriptRoot\$($window.ConfigName.Text).ini" -Encoding UTF8 -Depth 99 -Force
+
+    })
+    $window.BtnCancel.add_Click({
         $window.DialogResult = $false
-    }
-    )
-    $window.BtnOk.add_Click(
-    {
+    })
+    $window.BtnOk.add_Click({
         $window.DialogResult = $true
-    }
-    )
+    })
 
     $result = Show-WPFWindow -Window $window
 
@@ -358,7 +428,8 @@ Function Set-ConfigurationFile {
         } | Export-Clixml -Path "$PSScriptRoot\$($window.ConfigName.Text).ini" -Encoding UTF8 -Depth 99 -Force
         Write-Output -InputObject $window.ConfigName.Text
     } else {
-        Write-Warning 'User aborted dialog.'
+        Write-Warning 'User aborted configuration management dialog.'
+        Write-Output -InputObject $false
     }
     #endregion Process results
 }
@@ -366,43 +437,51 @@ Function Set-ConfigurationFile {
 
 #region Init
 $Start = Get-Date
-$ScriptTitle = 'Azure AD Configuration Report'
+$global:ScriptTitle = 'Azure AD Configuration Report'
 
-Write-Output -InputObject ('{0} script started.' -f $ScriptTitle)
+Write-Output -InputObject ('{0} script started.' -f $global:ScriptTitle)
 
 $Categories = @(
     @{
-        Id = 1
-        Name = 'Initial Access'
+        Id          = 1
+        Name        = 'Initial Access'
         Description = 'The adversary is trying to get into your network. Initial Access consists of techniques that use various entry vectors to gain their initial foothold within a network. Techniques used to gain a foothold include targeted spearphishing and exploiting weaknesses on public-facing web servers. Footholds gained through initial access may allow for continued access, like valid accounts and use of external remote services, or may be limited-use due to changing passwords.'
+        Indicator   = $true
     }, @{
-        Id = 2
-        Name = 'Persistence'
+        Id          = 2
+        Name        = 'Persistence'
         Description = 'The adversary is trying to maintain their foothold. Persistence consists of techniques that adversaries use to keep access to systems across restarts, changed credentials, and other interruptions that could cut off their access. Techniques used for persistence include any access, action, or configuration changes that let them maintain their foothold on systems, such as replacing or hijacking legitimate code or adding startup code.'
+        Indicator   = $true
     }, @{
-        Id = 3
-        Name = 'Privilege Escalation'
+        Id          = 3
+        Name        = 'Privilege Escalation'
         Description = 'The adversary is trying to gain higher-level permissions. Privilege Escalation consists of techniques that adversaries use to gain higher-level permissions on a system or network. Adversaries can often enter and explore a network with unprivileged access but require elevated permissions to follow through on their objectives. Common approaches are to take advantage of system weaknesses, misconfigurations, and vulnerabilities.'
+        Indicator   = $true
     }, @{
-        Id = 4
-        Name = 'Defense Evasion'
+        Id          = 4
+        Name        = 'Defense Evasion'
         Description = "The adversary is trying to avoid being detected. Defense Evasion consists of techniques that adversaries use to avoid detection throughout their compromise. Techniques used for defense evasion include uninstalling/disabling security software or obfuscating/encrypting data and scripts. Adversaries also leverage and abuse trusted processes to hide and masquerade their malware. Other tactics' techniques are cross-listed here when those techniques include the added benefit of subverting defenses."
+        Indicator   = $true
     }, @{
-        Id = 5
-        Name = 'Credential Access'
+        Id          = 5
+        Name        = 'Credential Access'
         Description = 'The adversary is trying to steal account names and passwords. Credential Access consists of techniques for stealing credentials like account names and passwords. Techniques used to get credentials include keylogging or credential dumping. Using legitimate credentials can give adversaries access to systems, make them harder to detect, and provide the opportunity to create more accounts to help achieve their goals.'
+        Indicator   = $true
     }, @{
-        Id = 6
-        Name = 'Discovery'
+        Id          = 6
+        Name        = 'Discovery'
         Description = "The adversary is trying to figure out your environment. Discovery consists of techniques an adversary may use to gain knowledge about the system and internal network. These techniques help adversaries observe the environment and orient themselves before deciding how to act. They also allow adversaries to explore what they can control and what's around their entry point in order to discover how it could benefit their current objective. Native operating system tools are often used toward this post-compromise information-gathering objective."
+        Indicator   = $true
     }, @{
-        Id = 7
-        Name = 'Impact'
+        Id          = 7
+        Name        = 'Impact'
         Description = "The adversary is trying to manipulate, interrupt, or destroy your systems and data. Impact consists of techniques that adversaries use to disrupt availability or compromise integrity by manipulating business and operational processes. Techniques used for impact can include destroying or tampering with data. In some cases, business processes can look fine, but may have been altered to benefit the adversaries' goals. These techniques might be used by adversaries to follow through on their end goal or to provide cover for a confidentiality breach."
+        Indicator   = $false
     }, @{
-        Id = 8
-        Name = 'Miscs'
+        Id          = 8
+        Name        = 'Miscs'
         Description = 'Other indicators and checks that are not related to previous categories'
+        Indicator   = $false
     }
 )
 $HtmlCredits = @(
@@ -423,7 +502,7 @@ $HtmlCredits = @(
 if ([String]::IsNullOrWhiteSpace($ConfigFileBaseName)) {
     $AvailableConfigs = Get-ChildItem -Path $PSScriptRoot -Filter '*.ini'
     if ($AvailableConfigs.Count -gt 0) {
-        Write-Host '=============== Azure AD Audit Tenant Selection Menu ==============='
+        Write-Host "=============== $ScriptTitle Menu ==============="
         Write-Host ''
         $i = 0
         foreach ($config in $AvailableConfigs) {
@@ -438,21 +517,30 @@ if ([String]::IsNullOrWhiteSpace($ConfigFileBaseName)) {
             exit
         } elseif ($SelectedConfig -eq 'N') {
             $ConfigFileBaseName = Set-ConfigurationFile
+            if ($ConfigFileBaseName -eq $false) {
+                Exit
+            } else {
+                try {
+                    $LoadedConfig = Import-Clixml -Path ($AvailableConfigs | Where-Object -FilterScript {$_.BaseName -eq $ConfigFileBaseName}).FullName
+                }
+                catch {throw $_}
+            }
+        } else {
+            try {
+                $LoadedConfig = Import-Clixml -Path $AvailableConfigs[$SelectedConfig].FullName
+            }
+            catch {throw $_}
+        }
+    } else {
+        $ConfigFileBaseName = Set-ConfigurationFile
+        if ($ConfigFileBaseName -eq $false) {
+            Exit
+        } else {
             try {
                 $LoadedConfig = Import-Clixml -Path ($AvailableConfigs | Where-Object -FilterScript {$_.BaseName -eq $ConfigFileBaseName}).FullName
             }
             catch {throw $_}
         }
-        try {
-            $LoadedConfig = Import-Clixml -Path $AvailableConfigs[$SelectedConfig].FullName
-        }
-        catch {throw $_}
-    } else {
-        $ConfigFileBaseName = Set-ConfigurationFile
-        try {
-            $LoadedConfig = Import-Clixml -Path ($AvailableConfigs | Where-Object -FilterScript {$_.BaseName -eq $ConfigFileBaseName}).FullName
-        }
-        catch {throw $_}
     }
 } else {
     Write-Output -InputObject "Loading specified config file: $ConfigFileBaseName"
@@ -530,7 +618,7 @@ Write-Output -InputObject 'Start generating HTML content and file'
 New-PSHtmlHtml -lang 'en' -Content {
     New-PSHtmlHead -Content {
         New-PSHtmlMeta -charset 'utf-8'
-        New-PSHtmlTitle -Content $ScriptTitle
+        New-PSHtmlTitle -Content $global:ScriptTitle
         New-PSHtmlLink -rel 'stylesheet' -href 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css'
         New-PSHtmlLink -rel 'stylesheet' -href 'https://unpkg.com/bootstrap-table@1.20.2/dist/bootstrap-table.min.css'
         New-PSHtmlLink -rel 'stylesheet' -href 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css'
@@ -544,7 +632,7 @@ New-PSHtmlHtml -lang 'en' -Content {
     New-PSHtmlBody -Content {
         New-PSHtmlHeader -class 'navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 border-bottom' -Content {
             New-PSHtmldiv -class 'container-fluid' -Content {
-                New-PSHtmlA -class 'navbar-brand' -href '#' -Content $ScriptTitle
+                New-PSHtmlA -class 'navbar-brand' -href '#' -Content $global:ScriptTitle
                 New-PSHtmlInput -class 'form-control form-control-dark w-100' -id 'searchBar' -onkeyup 'searchNavbar()' -type 'text' -OtherAttributes @{
                     'placeholder' = 'Search'
                     'aria-label'  = 'Search'
@@ -911,7 +999,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                         New-PSHtmlH2 -Content 'MITRE ATT&CK'
                         New-PSHtmlDiv -class 'row justify-content-center' -Content {
                             New-PSHtmldiv -class 'col-10 row row-cols-1 row-cols-md-3 g-4' -Content {
-                                foreach ($category in $Categories[0..5]) {
+                                foreach ($category in ($Categories | Where-Object -FilterScript {$_.Indicator -eq $true})) {
                                     $History         = $IndicatorsHistory | Where-Object -FilterScript {$_.Name -eq $category.Name}
                                     $AllScoreResults = ($Outputs | Where-Object -FilterScript {$_.CategoryId -eq $category.Id}).Result.Score | Measure-Object -Sum
                                     $CategoryScore   = [Math]::Round(($AllScoreResults.Sum / $AllScoreResults.Count), 2)
@@ -1194,66 +1282,68 @@ New-PSHtmlHtml -lang 'en' -Content {
         }
         New-PSHtmlScript -Content @'
 (function () {
-    if (lightSwitch.checked) {
-        document.querySelectorAll('.bg-light').forEach((element) => {
-            element.className = element.className.replace(/-light/g, '-dark');
-        });
-        document.querySelectorAll('.btn-light').forEach((element) => {
-            element.className = element.className.replace(/-light/g, '-dark');
-        });
-
-        document.body.classList.add('bg-dark');
-
-        if (document.body.classList.contains('text-dark')) {
-            document.body.classList.replace('text-dark', 'text-light');
-        } else {
-            document.body.classList.add('text-light');
-        }
-
-        // Tables
-        var tables = document.querySelectorAll('table');
-        for (var i = 0; i < tables.length; i++) {
-            tables[i].classList.add('table-dark');
-        }
-
-        // set light switch input to true
-        if (!lightSwitch.checked) {
-            lightSwitch.checked = true;
-        }
-        localStorage.setItem('lightSwitch', 'dark');
-    } else {
-        document.querySelectorAll('.bg-dark').forEach((element) => {
-            element.className = element.className.replace(/-dark/g, '-light');
-        });
-        document.querySelectorAll('.btn-dark').forEach((element) => {
-            element.className = element.className.replace(/-dark/g, '-light');
-        });
-        document.body.classList.add('bg-light');
-
-        if (document.body.classList.contains('text-light')) {
-            document.body.classList.replace('text-light', 'text-dark');
-        } else {
-            document.body.classList.add('text-dark');
-        }
-
-        // Tables
-        var tables = document.querySelectorAll('table');
-        for (var i = 0; i < tables.length; i++) {
-            if (tables[i].classList.contains('table-dark')) {
-                tables[i].classList.remove('table-dark');
-            }
-        }
-
+    function onToggleMode() {
         if (lightSwitch.checked) {
-            lightSwitch.checked = false;
+            document.querySelectorAll('.bg-light').forEach((element) => {
+                element.className = element.className.replace(/-light/g, '-dark');
+            });
+            document.querySelectorAll('.btn-light').forEach((element) => {
+                element.className = element.className.replace(/-light/g, '-dark');
+            });
+
+            document.body.classList.add('bg-dark');
+
+            if (document.body.classList.contains('text-dark')) {
+                document.body.classList.replace('text-dark', 'text-light');
+            } else {
+                document.body.classList.add('text-light');
+            }
+
+            // Tables
+            var tables = document.querySelectorAll('table');
+            for (var i = 0; i < tables.length; i++) {
+                tables[i].classList.add('table-dark');
+            }
+
+            // set light switch input to true
+            if (!lightSwitch.checked) {
+                lightSwitch.checked = true;
+            }
+            localStorage.setItem('lightSwitch', 'dark');
+        } else {
+            document.querySelectorAll('.bg-dark').forEach((element) => {
+                element.className = element.className.replace(/-dark/g, '-light');
+            });
+            document.querySelectorAll('.btn-dark').forEach((element) => {
+                element.className = element.className.replace(/-dark/g, '-light');
+            });
+            document.body.classList.add('bg-light');
+
+            if (document.body.classList.contains('text-light')) {
+                document.body.classList.replace('text-light', 'text-dark');
+            } else {
+                document.body.classList.add('text-dark');
+            }
+
+            // Tables
+            var tables = document.querySelectorAll('table');
+            for (var i = 0; i < tables.length; i++) {
+                if (tables[i].classList.contains('table-dark')) {
+                    tables[i].classList.remove('table-dark');
+                }
+            }
+
+            if (lightSwitch.checked) {
+                lightSwitch.checked = false;
+            }
+            localStorage.setItem('lightSwitch', 'light');
         }
-        localStorage.setItem('lightSwitch', 'light');
     }
-}
-let lightSwitch = document.getElementById('lightSwitch');
-lightSwitch.addEventListener('change', onToggleMode);
-onToggleMode();
+    let lightSwitch = document.getElementById('lightSwitch');
+    lightSwitch.addEventListener('change', onToggleMode);
+    onToggleMode();
 })();
+        
 '@
     }
 } | Out-File -FilePath "$OutputFilePath.html" -Encoding 'utf8' -Force

@@ -82,7 +82,6 @@ catch {
 #Check if Organization is using Azure AD Connect. If not, this indicator is useless
 try {
     #region Get All AAD Users created within the last 6 months
-    $Endpoint = 'users'
     $AADFilter = @(
         "userType eq 'Member'"
         "createdDateTime ge $($Start.AddMonths(-6).ToString('yyyy-MM-ddTHH:mm:ssZ'))"
@@ -97,7 +96,7 @@ try {
     )
     $GetAADUsers = @{
         Method      = 'GET'
-        Uri         = 'https://graph.microsoft.com/v1.0/{0}?$filter={1}&$select={2}' -f $Endpoint, ($AADFilter -join ' and '), ($PropertiesToLoad -join ',')
+        Uri         = 'https://graph.microsoft.com/v1.0/users?$filter={0}&$select={1}' -f ($AADFilter -join ' and '), ($PropertiesToLoad -join ',')
         ContentType = 'application/json'
         Headers     = @{
             Authorization = "Bearer $GraphToken"

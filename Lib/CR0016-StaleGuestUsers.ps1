@@ -84,7 +84,6 @@ catch {
 
 try {
     #region Get all Azure AD Guest Accounts
-    $Endpoint         = 'users'
     $AADFilter        = "userType eq 'Guest'"
     $PropertiesToLoad = @(
         'id'
@@ -97,7 +96,7 @@ try {
     )
     $GetGuestUsers = @{
         Method = 'GET'
-        Uri = 'https://graph.microsoft.com/v1.0/{0}?$filter={1}&$select={2}' -f $Endpoint, $AADFilter, ($PropertiesToLoad -join ',') #"https://graph.microsoft.com/v1.0/users?`$filter=userType eq 'Guest'"
+        Uri = 'https://graph.microsoft.com/v1.0/users?$filter={0}&$select={1}' -f $AADFilter, ($PropertiesToLoad -join ',')
         ContentType = 'application/json'
         Headers = @{
             Authorization = "Bearer $GraphToken"

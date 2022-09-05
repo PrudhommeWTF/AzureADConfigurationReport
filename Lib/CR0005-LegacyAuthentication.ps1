@@ -1,11 +1,4 @@
-﻿<#
-REFERENCE:
-https://docs.microsoft.com/en-us/azure/active-directory/conditional-access/block-legacy-authentication
-
-REQUIRED ACCESS TO READ POLICIES:
-Policy.Read.All
-#>
-[CmdletBinding(
+﻿[CmdletBinding(
     DefaultParameterSetName = 'Default'
 )]
 Param(
@@ -34,6 +27,7 @@ Param(
     [String]$TenantAppSecret
 )
 
+#region Init
 $Start = Get-Date
 $Output = @{
     ID                     = 'CR0005'

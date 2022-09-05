@@ -1,15 +1,4 @@
-﻿<#
-REFERENCES:
-https://docs.microsoft.com/en-us/graph/api/rbacapplication-list-roleassignments?view=graph-rest-1.0&tabs=http
-https://docs.microsoft.com/en-us/graph/api/directoryobject-get?view=graph-rest-1.0&tabs=http
-https://docs.microsoft.com/en-us/graph/api/unifiedroleeligibilityscheduleinstance-list?view=graph-rest-beta&tabs=http
-
-REQUIRED APP ROLE ACCESS
-- READ ROLE ASSIGNMENTS:  RoleManagement.Read.Directory
-- READ DIRECTORY OBJECTS:  Directory.Read.All
-- READ ROLE ELIGIBILITY SCHEDULE INSTANCES:  RoleManagement.Read.All
-#>
-[CmdletBinding(
+﻿[CmdletBinding(
     DefaultParameterSetName = 'Default'
 )]
 Param(
@@ -38,6 +27,7 @@ Param(
     [String]$TenantAppSecret
 )
 
+#region Init
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0002'
@@ -54,7 +44,7 @@ $Output = @{
 Privileged in AD >  Do not sync to AAD.
 Privileged in AAD > Make sure it is not a synced account, and not a continuous role member but rather an eligible role member (use PIM with eligible roles protected with MFA when elevating).
 '@
-    Permissions            = @('RoleManagement.Read.Directory', 'PrivilegedAccess.Read.AzureAD', 'Directory.Read.All')
+    Permissions            = @('RoleManagement.Read.Directory', 'PrivilegedAccess.Read.AzureAD', 'Directory.Read.All', 'RoleEligibilitySchedule.Read.Directory')
     SecurityFrameworks     = @(
         @{
             Name = 'MITRE ATT&CK'

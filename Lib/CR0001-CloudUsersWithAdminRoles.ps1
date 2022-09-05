@@ -27,6 +27,7 @@ Param(
     [String]$TenantAppSecret
 )
 
+#region Init
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0001'
@@ -44,7 +45,7 @@ $Output = @{
         'Monitor for suspicious account behavior across cloud services that share account.',
         'Monitor the activity of cloud accounts to detect abnormal or malicious behavior, such as accessing information outside of the normal function of the account or account usage at atypical hours.'
     )
-    Permissions            = @('RoleManagement.Read.Directory', 'PrivilegedAccess.Read.AzureAD', 'Directory.Read.All')
+    Permissions            = @('RoleManagement.Read.Directory', 'Directory.Read.All', 'RoleManagement.ReadWrite.Directory')
     SecurityFrameworks     = @(
         @{
             Name = 'MITRE ATT&CK'

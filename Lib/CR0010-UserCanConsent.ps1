@@ -1,17 +1,4 @@
-﻿<#
-REFERENCE:
-https://docs.microsoft.com/en-us/graph/api/authorizationpolicy-get?view=graph-rest-1.0
-
-REQUIRED APP ROLE ACCESS
-- READ AUTHORIZATION POLICY:  Policy.Read.All
-
-Corresponding values for .defaultUserRolePermissions.permissionGrantPoliciesAssigned:
-
-Do not allow user consent = NULL
-Allow user consent for apps from verified publishers, for selected permissions = ManagePermissionGrantsForSelf.microsoft-user-default-low
-Allow user consent for apps = ManagePermissionGrantsForSelf.microsoft-user-default-legacy
-#>
-[CmdletBinding(
+﻿[CmdletBinding(
     DefaultParameterSetName = 'Default'
 )]
 Param(
@@ -40,6 +27,7 @@ Param(
     [String]$TenantAppSecret
 )
 
+#region Init
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0010'
@@ -111,6 +99,12 @@ try {
         Continue
     }
 
+    <#
+    Corresponding values for .defaultUserRolePermissions.permissionGrantPoliciesAssigned:
+        Do not allow user consent = NULL
+        Allow user consent for apps from verified publishers, for selected permissions = ManagePermissionGrantsForSelf.microsoft-user-default-low
+        Allow user consent for apps = ManagePermissionGrantsForSelf.microsoft-user-default-legacy
+    #>
     $AuthorizationPolicy = $AuthorizationPolicyResult.defaultUserRolePermissions.permissionGrantPoliciesAssigned
 
     if ($AuthorizationPolicy -match "microsoft-user-default-legacy") {

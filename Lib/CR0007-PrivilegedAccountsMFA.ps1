@@ -1,12 +1,4 @@
-﻿<#
-REFERENCE:
-https://docs.microsoft.com/en-us/graph/api/reportroot-list-credentialuserregistrationdetails?view=graph-rest-beta&tabs=http
-
-REQUIRED APP ROLE ACCESS
-- READ DIRECTORY ROLES:  RoleManagement.Read.Directory
-- READ REPORTS:  Reports.Read.All
-#>
-[CmdletBinding(
+﻿[CmdletBinding(
     DefaultParameterSetName = 'Default'
 )]
 Param(
@@ -35,6 +27,7 @@ Param(
     [String]$TenantAppSecret
 )
 
+#region Init
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0007'
@@ -52,7 +45,7 @@ $Output = @{
     SecurityFrameworks     = @(
         @{
             Name = 'MITRE ATT&CK'
-            Tags = @('Credential Access')
+            Tags = @('T1098 - Account Manipulation', 'TA0003 - Persistence', 'M1032 - Multi-factor Authentication')
         }
     )
     Result                 = @{

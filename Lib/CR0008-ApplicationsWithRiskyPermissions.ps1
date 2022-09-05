@@ -1,12 +1,4 @@
-﻿<#
-REFERENCE:
-https://posts.specterops.io/azure-privilege-escalation-via-azure-api-permissions-abuse-74aee1006f48
-
-REQUIRED APP ROLE ACCESS
-- List Applications:  Application.Read.All
-- Get Service Principal:  Application.Read.All
-#>
-[CmdletBinding(
+﻿[CmdletBinding(
     DefaultParameterSetName = 'Default'
 )]
 Param(
