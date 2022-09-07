@@ -11,11 +11,27 @@ try {
 catch {
     throw $_
 }
+
+#Custom functions
 Function New-PSHtmlBootstrapTable {
     <#
+        .DESCRIPTION
+        Function to generate Html Table with Bootstrap Table library from PowerShell object (Array, Hashtable or PSCustomObject)
+
+        .PARAMETER TableId
+        Id for the Html Table
+
+        .PARAMETER Data
+        Input data to put in the Html Table
+
         .PARAMETER PropertiesMap
         Hashtable to map $Data properties to Table Header
-
+        
+        .PARAMETER Searchable
+        Add search to the Html Table
+        
+        .PARAMETER Paged
+        Add pagination to the Html Table
     #>
     Param(
         [Parameter(
@@ -58,10 +74,33 @@ Function New-PSHtmlBootstrapTable {
     New-PSHtmlScript -Content "`$('#$TableId').bootstrapTable($($BootstrapTable | ConvertTo-Json -Compress))"
 }
 Function New-RandomRGBA {
+    <#
+        .DESCRIPTION
+        Generate random RGBA color code
+    #>
     $Random = [Drawing.Color]::FromArgb((Get-Random -Maximum 256),(Get-Random -Maximum  256),(Get-Random -Maximum  256),(Get-Random -Maximum  256))
     'rgba({0}, {1}, {2}, {3})' -f $Random.R, $Random.G, $Random.B, $Random.A
 }
 Function New-PSHtmlChartJS {
+    <#
+        .DESCRIPTION
+        Generate Html and Javascript code to display charts using ChartJS library
+
+        .PARAMETER ChartId
+        Id to use for the Canvas Html tag entry
+
+        .PARAMETER ChartType
+        Type of chart to generate with ChartJS
+
+        .PARAMETER ArrayTitleProperty
+        In case of InputObject being an Array this parameter is use to specify colums
+
+        .PARAMETER ArrayValueProperty
+        In case of InputObject being an Array this parameter is use to specify values
+
+        .PARAMETER InputObject
+        Data to use as input for the chart
+    #>
     Param(
         $ChartId = 'myChart',
         $ChartType,
@@ -208,15 +247,17 @@ Function Invoke-ParallelRunSpace{
     $RunspacePool.Dispose()
 }
 Function Set-ConfigurationFile {
-    $xaml = @"
-<Window
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="$($global:ScriptTitle) - Configuration Tool">
+    <#
+        .DESCRIPTION
+        Function to handle the tenant configuration file(s) and eventually generates Azure AD Application Registration with API Permissions in target tenant.
+    #>
+
+    $Xaml = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="$($global:ScriptTitle) - Tenant Configuration Tool" WindowStyle="ToolWindow" SizeToContent="WidthAndHeight">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="400"/>
+            <ColumnDefinition Width="200"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
@@ -227,28 +268,27 @@ Function Set-ConfigurationFile {
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
       
         <TextBlock Grid.Column="0" Grid.Row="0" Margin="5">Configuration Name</TextBlock>
-        <ComboBox Name="ConfigName" Grid.Column="1" Grid.Row="0" IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"></ComboBox>
-        <Button Name="BtnCreateAzureApp" Grid.Column="2" Grid.Row="0" Width="80">Create Azure AD Application</Button>
-        <Button Name="BtnLoadConfig" Grid.Column="3" Grid.Row="0" Width="80">Load Existing Configuration</Button>
+        <ComboBox Name="ConfigName" Grid.Column="1" Grid.Row="0" Height="22" Margin="5" IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"></ComboBox>
+        <Button Name="BtnCreateAzureApp" Grid.Column="2" Grid.Row="0" Height="22" Margin="5">Create Azure AD Application</Button>
+        <Button Name="BtnLoadConfig" Grid.Column="3" Grid.Row="0" Height="22" Margin="5">Load Existing Configuration</Button>
 
-        <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" Margin="5">Please Azure AD details:</TextBlock>
+        <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="4" Margin="5">Please Azure AD details:</TextBlock>
 
         <TextBlock Grid.Column="0" Grid.Row="2" Margin="5">Tenant ID</TextBlock>
-        <TextBox Name="TenantId" Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="2" Margin="5"></TextBox>
-        <TextBlock Grid.Column="0" Grid.Row="3" Margin="5">Application ID</TextBlock>
-        <TextBox Name="AppId" Grid.Column="1" Grid.Row="3" Grid.ColumnSpan="2" Margin="5"></TextBox>
-        <TextBlock Grid.Column="0" Grid.Row="4" Margin="5">Application Secret</TextBlock>
-        <TextBox Name="AppSecret" Grid.Column="1" Grid.Row="4" Grid.ColumnSpan="2" Margin="5"></TextBox>
+        <TextBox Name="TenantId" Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="3" Height="22" Margin="5"></TextBox>
 
-      
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,10,0,0" Grid.Row="7" Grid.ColumnSpan="3">
-            <Button Name="BtnOk" MinWidth="80" Height="22" Margin="5">OK</Button>
-            <Button Name="BtnCancel" MinWidth="80" Height="22" Margin="5">Cancel</Button>
+        <TextBlock Grid.Column="0" Grid.Row="3" Margin="5">Application ID</TextBlock>
+        <TextBox Name="AppId" Grid.Column="1" Grid.Row="3" Grid.ColumnSpan="3" Height="22" Margin="5"></TextBox>
+
+        <TextBlock Grid.Column="0" Grid.Row="4" Margin="5">Application Secret</TextBlock>
+        <TextBox Name="AppSecret" Grid.Column="1" Grid.Row="4" Grid.ColumnSpan="3" Height="22" Margin="5"></TextBox>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,10,5,0" Grid.Row="5" Grid.ColumnSpan="4">
+            <Button Name="BtnOk" MinWidth="80" Height="22" Margin="0,0,5,5">OK</Button>
+            <Button Name="BtnCancel" MinWidth="80" Height="22" Margin="5,0,0,5">Cancel</Button>
         </StackPanel>
     </Grid>
 </Window>
@@ -256,32 +296,46 @@ Function Set-ConfigurationFile {
 
     #region Code Behind
     Function Convert-XAMLtoWindow {
+        <#
+            .DESCRIPTION
+            Function to convert Xaml String to Window.
+
+            .PARAMETER Xaml
+            Xaml code to generate window
+        #>
         Param(
             [Parameter(
                 Mandatory = $true
             )]
-            [String]$XAML
+            [String]$Xaml
         )
     
         Add-Type -AssemblyName PresentationFramework
         
-        $reader = [XML.XMLReader]::Create([IO.StringReader]$XAML)
-        $result = [Windows.Markup.XAMLReader]::Load($reader)
-        $reader.Close()
-        $reader = [XML.XMLReader]::Create([IO.StringReader]$XAML)
-        while ($reader.Read()) {
-            $name=$reader.GetAttribute('Name')
-            if ($name) {
-            $result | Add-Member NoteProperty -Name $name -Value $result.FindName($name) -Force
+        $Reader = [XML.XMLReader]::Create([IO.StringReader]$Xaml)
+        $Result = [Windows.Markup.XAMLReader]::Load($Reader)
+        $Reader.Close()
+        $Reader = [XML.XMLReader]::Create([IO.StringReader]$Xaml)
+        while ($Reader.Read()) {
+            $Name = $Reader.GetAttribute('Name')
+            if ($Name) {
+                $Result | Add-Member NoteProperty -Name $Name -Value $Result.FindName($Name) -Force
             } else {
-            $name=$reader.GetAttribute('x:Name')
+                $Name = $Reader.GetAttribute('x:Name')
             }
         }
-        $reader.Close()
-        $result
+        $Reader.Close()
+        $Result
     }
 
     Function Show-WPFWindow {
+        <#
+            .DESCRIPTION
+            Function to generate the Application Window from Window object.
+
+            .PARAMETER Window
+            Window object to generate WPF Window
+        #>
         Param(
             [Parameter(
                 Mandatory = $true
@@ -289,27 +343,33 @@ Function Set-ConfigurationFile {
             [Windows.Window]$Window
         )
         
-        $result = $null
-        $null = $window.Dispatcher.InvokeAsync{
-            $result = $window.ShowDialog()
-            Set-Variable -Name result -Value $result -Scope 1
+        $Result = $null
+        $null = $Window.Dispatcher.InvokeAsync{
+            $Result = $Window.ShowDialog()
+            Set-Variable -Name result -Value $Result -Scope 1
         }.Wait()
-        $result
+        $Result
     }
     #endregion Code Behind
 
-    $window = Convert-XAMLtoWindow -XAML $xaml 
+    #region Window action handlers
+    $Window = Convert-XAMLtoWindow -XAML $Xaml
 
+    #Loads all configs available in the Gui
     $Configs = Get-ChildItem -Path $PSScriptRoot -Filter '*.ini'
     if ($Configs) {
-        $window.ConfigName.ItemsSource = @($Configs.BaseName)
+        $Window.ConfigName.ItemsSource = @($Configs.BaseName)
     }
 
     #Disable controls until a config is loaded or created
-    $window.AppId.IsEnabled = $window.AppSecret.IsEnabled = $window.TenantId.IsEnabled = $false
+    $Window.AppId.IsEnabled = $Window.AppSecret.IsEnabled = $Window.TenantId.IsEnabled = $false
+
+    #region buttons actions
     $window.BtnLoadConfig.add_Click({
         #Enable Controls
         $window.AppId.IsEnabled = $window.AppSecret.IsEnabled = $window.TenantId.IsEnabled = $true
+        $window.BtnCreateAzureApp.IsEnabled = $false
+
         if (Test-Path -Path "$PSScriptRoot\$($window.ConfigName.Text).ini") {
             $Config = Import-Clixml -Path "$PSScriptRoot\$($window.ConfigName.Text).ini"
             $window.TenantId.Text  = $Config.TenantId
@@ -318,6 +378,10 @@ Function Set-ConfigurationFile {
         }
     })
     $window.BtnCreateAzureApp.add_Click({
+        #Disable BtnLoadConfig during Azure AD App creation process
+        $window.BtnLoadConfig.IsEnabled = $false
+
+        #Load AzureAD module to handle the creation of AzureAD App Reg and setting API Permissions
         try {
             Import-Module -Name AzureAD
         }
@@ -334,6 +398,7 @@ Function Set-ConfigurationFile {
             Exit
         }
 
+        #Connecting AzureAD with user provided credentials
         try {
             $AzureADDetails = Connect-AzureAD
         }
@@ -349,36 +414,10 @@ Function Set-ConfigurationFile {
             Exit
         }
 
-        $MSGraphAppId = '00000003-0000-0000-c000-000000000000'
-        $MSGraphAppRole = @(
-            @{Role = 'RoleManagement.Read.Directory';          Id = '483bed4a-2ad3-4361-a73b-c83ccdbdc53c'}
-            @{Role = 'PrivilegedAccess.Read.AzureAD';          Id = '4cdc2547-9148-4295-8d11-be0db1391d6b'}
-            @{Role = 'Directory.Read.All';                     Id = '7ab1d382-f21e-4acd-a863-ba3e13f7da61'}
-            @{Role = 'RoleEligibilitySchedule.Read.Directory'; Id = ''}
-            @{Role = 'AdministrativeUnit.Read.All';            Id = '134fd756-38ce-4afd-ba33-e9623dbe66c2'}
-            @{Role = 'Policy.Read.All';                        Id = '246dd0d5-5bd0-4def-940b-0421030a5b68'}
-            @{Role = 'Reports.Read.All';                       Id = '230c1aed-a721-4c5d-9cb4-a90514e508ef'}
-            @{Role = 'Application.Read.All';                   Id = '9a5d68dd-52b0-4cc2-bd40-abcf44ac3a30'}
-            @{Role = 'IdentityRiskEvent.Read.All';             Id = '6e472fd1-ad78-48da-a0f0-97ab2c6b769e'}
-            @{Role = 'Domain.Read.All';                        Id = 'dbb9058a-0e50-45d7-ae91-66909b5d4664'}
-        )
+        #Create the Azure AD Application
         $ReplyUrl = "https://portal.azure.com"
-        $GraphRequiredAccess = New-Object -TypeName "Microsoft.Open.AzureAD.Model.RequiredResourceAccess"
-        $GraphRequiredAccess.ResourceAppId = $MSGraphAppId
-        $AppPermissions = foreach ($roleId in $MSGraphAppRole.Id) {
-            $GraphRequiredAccess.ResourceAccess += New-Object -TypeName "Microsoft.Open.AzureAD.Model.ResourceAccess" -ArgumentList $roleId, 'Role'
-        }
-        
-        #Create the app with all the permissions
-        $appCreationParameters = @{
-            'AvailableToOtherTenants' = $true
-            'DisplayName'             = $global:ScriptTitle
-            'Homepage'                = $ReplyUrl
-            'ReplyUrls'               = $ReplyUrl
-            'RequiredResourceAccess'  = $AppPermissions
-        }
         try {
-            $AzureADAppCreated = New-AzureADApplication @appCreationParameters
+            $AzureADAppCreated = New-AzureADApplication  -DisplayName $global:ScriptTitle -Homepage $ReplyUrl -ReplyUrls $ReplyUrl
         }
         catch {
             Write-Warning -Message 'Failed creating Azure AD application with AzureAD module.'
@@ -392,22 +431,100 @@ Function Set-ConfigurationFile {
             Exit
         }
 
+        #List all required permissions in Check Rules scripts
+        $ApplicationPermissions = @(
+            'RoleManagement.Read.Directory',
+            'PrivilegedAccess.Read.AzureAD',
+            'Directory.Read.All',
+            'RoleEligibilitySchedule.Read.Directory',
+            'AdministrativeUnit.Read.All',
+            'Policy.Read.All',
+            'Reports.Read.All',
+            'Application.Read.All',
+            'IdentityRiskEvent.Read.All',
+            'Domain.Read.All',
+            'Organization.Read.All',
+            'Domain.Read.All'
+        )
+        
+        #Get Service Principal of Microsoft Graph Resource API 
+        $GraphSP = Get-AzureADServicePrincipal -All $true | Where-Object {$_.DisplayName -eq 'Microsoft Graph' -and $_.AppId -eq '00000003-0000-0000-c000-000000000000'}
+
+        #Initialize RequiredResourceAccess for Microsoft Graph Resource API 
+        $RequiredGraphAccess = New-Object -TypeName Microsoft.Open.AzureAD.Model.RequiredResourceAccess
+        $RequiredGraphAccess.ResourceAppId = $GraphSP.AppId
+        $RequiredGraphAccess.ResourceAccess = New-Object -TypeName System.Collections.Generic.List[Microsoft.Open.AzureAD.Model.ResourceAccess]
+
+        #Add app permissions
+        foreach ($permission in $ApplicationPermissions) {
+            $RequiredPermission = $null
+            #Get required app permission
+            $RequiredPermission = $GraphSP.AppRoles | Where-Object -FilterScript {$_.Value -eq $permission}
+            if ($RequiredPermission) {
+                $ResourceAccess = New-Object Microsoft.Open.AzureAD.Model.ResourceAccess
+                $ResourceAccess.Type = 'Role'
+                $ResourceAccess.Id   = $RequiredPermission.Id    
+                #Add required app permission
+                $RequiredGraphAccess.ResourceAccess.Add($ResourceAccess)
+            } else {
+                Write-Host -Object "App permission $permission not found in the Graph Resource API" -ForegroundColor Red
+            }
+        }
+
+        #Add required resource accesses
+        $RequiredResourcesAccess = New-Object -TypeName System.Collections.Generic.List[Microsoft.Open.AzureAD.Model.RequiredResourceAccess]
+        $RequiredResourcesAccess.Add($RequiredGraphAccess)
+        
+        #Set permissions in existing Azure AD App
+        try {
+            Set-AzureADApplication -ObjectId $AzureADAppCreated.ObjectId -RequiredResourceAccess $RequiredResourcesAccess
+        }
+        catch {
+            Write-Warning -Message 'Failed adding permission to Azure AD application with AzureAD module.'
+            #Write encoutered error
+            $_ | Write-Error
+
+            #Close the window
+            $window.DialogResult = $false
+            
+            #Exit script
+            Exit
+        }
+
+        #Generate a Secret to allow the tool to connect to the Azure AD App
         $SecretStartDate = Get-Date
         $AppSecret = New-AzureADApplicationPasswordCredential -ObjectId $AzureADAppCreated.ObjectId -CustomKeyIdentifier $global:ScriptTitle -StartDate $SecretStartDate -EndDate $($SecretStartDate.AddYears(3))
 
-        & ("https://login.microsoftonline.com/{0}/adminconsent?client_id={1}&redirect_uri={2}" -f $AzureADDetails.TenantId, $AzureADAppCreated.AppId, $AzureADAppCreated.ReplyUrls[0])
-
+        #Enabling controls
         $window.AppId.IsEnabled = $window.AppSecret.IsEnabled = $window.TenantId.IsEnabled = $true
+
+        #Set controls values with Azure AD App details
         $window.TenantId.Text  = $AzureADDetails.TenantId
         $window.AppId.Text     = $AzureADAppCreated.AppId
         $window.AppSecret.Text = $AppSecret.Value
 
+        #Export configuration from Azure AD App to Ini file
         [PSCustomObject]@{
             TenantId = $TenantId
             AppId    = $AzureADAppCreated.AppId
             Secret   = $AppSecret.Value
         } | Export-Clixml -Path "$PSScriptRoot\$($window.ConfigName.Text).ini" -Encoding UTF8 -Depth 99 -Force
 
+        #Output information on consent being required prior going forward with the script
+        Write-Warning -Message 'Do not forget to grant Azure AD Application Registration permissions before going forward with the script.'
+        Write-Warning -Message ('https://login.microsoftonline.com/{0}/adminconsent?client_id={1}' -f $AzureADDetails.TenantId, $AzureADAppCreated.AppId)        
+
+        #Start to wait for application to be fully propagated in Azure AD with permissions
+        $Minutes = 1
+        $i = 0
+        Write-Warning -Message "Start $Minutes minutes wait in order to ensure Azure AD App and API Permissions are propagated properly."
+        do {
+            Write-Host -Object '.' -NoNewline
+            Start-Sleep -Seconds 1
+            $i++
+        }
+        while ($i -eq ($Minutes*60))
+        Start-Sleep -Seconds ($Minutes*60)
     })
     $window.BtnCancel.add_Click({
         $window.DialogResult = $false
@@ -415,17 +532,20 @@ Function Set-ConfigurationFile {
     $window.BtnOk.add_Click({
         $window.DialogResult = $true
     })
+    #endregion Window action handlers
 
-    $result = Show-WPFWindow -Window $window
+    $WPFResult = Show-WPFWindow -Window $window
 
     #region Process results
-    if ($result -eq $true) {
+    if ($WPFResult -eq $true) {
+        #Export configuration from WPF TextBox to Ini file
         [PSCustomObject]@{
             TenantId = $window.TenantId.Text
             AppId    = $window.AppId.Text
             Secret   = $window.AppSecret.Text
-            #Scripts  = $window.CheckRules.SelectedItems.Name
         } | Export-Clixml -Path "$PSScriptRoot\$($window.ConfigName.Text).ini" -Encoding UTF8 -Depth 99 -Force
+
+        #Return the ConfigName selected in the WPF
         Write-Output -InputObject $window.ConfigName.Text
     } else {
         Write-Warning 'User aborted configuration management dialog.'
@@ -437,10 +557,13 @@ Function Set-ConfigurationFile {
 
 #region Init
 $Start = Get-Date
+
+#Title to be used all over the script (Host, WPF Gui or Html output)
 $global:ScriptTitle = 'Azure AD Configuration Report'
 
 Write-Output -InputObject ('{0} script started.' -f $global:ScriptTitle)
 
+#Define Categories from MITRE ATT&CK to be displayed in Html and XML output files.
 $Categories = @(
     @{
         Id          = 1
@@ -484,6 +607,8 @@ $Categories = @(
         Indicator   = $false
     }
 )
+
+#Define credits of Html Libraries being used in Html output
 $HtmlCredits = @(
     @{
         Text = 'Bootstrap'
@@ -496,46 +621,62 @@ $HtmlCredits = @(
         Href = 'https://www.chartjs.org/'
     }
 )
+
+#Array to contain Indicators, used in outputs files
 [Collections.ArrayList]$Indicators = @()
 
 #region Select config file
 if ([String]::IsNullOrWhiteSpace($ConfigFileBaseName)) {
+    #List available configuration files from script folder
     $AvailableConfigs = Get-ChildItem -Path $PSScriptRoot -Filter '*.ini'
+
+    #Prompt menu to choose configuration if any otherwise prompt Gui to create one
     if ($AvailableConfigs.Count -gt 0) {
         Write-Host "=============== $ScriptTitle Menu ==============="
         Write-Host ''
         $i = 0
+        #Show a list of all available configuration BaseName
         foreach ($config in $AvailableConfigs) {
             Write-Host "$($i) - $($config.BaseName)"
             $i++
         }
         Write-Host ''
-        Write-Host 'Press "N" to manage configuration files.'
-        Write-Host 'Press "Q" to quit.'
+        Write-Host 'Press "M" to Manage configuration files.'
+        Write-Host 'Press "Q" to Quit.'
         $SelectedConfig = Read-Host "Please make a selection"
         if ($SelectedConfig -eq 'Q') {
-            exit
-        } elseif ($SelectedConfig -eq 'N') {
+            #User requested to quit the script
+            Exit
+        } elseif ($SelectedConfig -eq 'M') {
+            #User requested to manage configuration files, starting WPF Window
             $ConfigFileBaseName = Set-ConfigurationFile
+
+            #Ensure user selected a tenant to audit
             if ($ConfigFileBaseName -eq $false) {
+                #No tenant selected, exiting
                 Exit
             } else {
+                #Tenant selected, loading configuration file from script folder
                 try {
-                    $LoadedConfig = Import-Clixml -Path ($AvailableConfigs | Where-Object -FilterScript {$_.BaseName -eq $ConfigFileBaseName}).FullName
+                    $LoadedConfig = Import-Clixml -Path (Get-ChildItem -Path $PSScriptRoot -Filter "$ConfigFileBaseName.ini").FullName
                 }
                 catch {throw $_}
             }
         } else {
+            #Load selected configuration from the in Host menu
             try {
                 $LoadedConfig = Import-Clixml -Path $AvailableConfigs[$SelectedConfig].FullName
             }
             catch {throw $_}
         }
     } else {
+        #Prompt Gui to handle tenant configuration
         $ConfigFileBaseName = Set-ConfigurationFile
         if ($ConfigFileBaseName -eq $false) {
+            #No tenant selected, exiting
             Exit
         } else {
+            #Tenant selected, loading configuration file from script folder
             try {
                 $LoadedConfig = Import-Clixml -Path ($AvailableConfigs | Where-Object -FilterScript {$_.BaseName -eq $ConfigFileBaseName}).FullName
             }
@@ -543,6 +684,7 @@ if ([String]::IsNullOrWhiteSpace($ConfigFileBaseName)) {
         }
     }
 } else {
+    #A configration file BaseName was specified when calling script. Loading configuration file.
     Write-Output -InputObject "Loading specified config file: $ConfigFileBaseName"
     try {
         $LoadedConfig = Import-Clixml -Path ($AvailableConfigs | Where-Object -FilterScript {$_.BaseName -eq $ConfigFileBaseName}).FullName
@@ -555,6 +697,7 @@ if ([String]::IsNullOrWhiteSpace($ConfigFileBaseName)) {
 }
 #endregion Select config file
 
+#Generate a Graph API Access Token with loaded configuration
 Write-Output -InputObject "Trying to get a Graph API Access Token for tenant: $($LoadedConfig.TenantId)"
 try {
     $GraphToken = Invoke-RestMethod -Method 'POST' -Uri "https://login.microsoftonline.com/$($LoadedConfig.TenantId)/oauth2/v2.0/token" -Body @{
@@ -573,6 +716,7 @@ catch {
 
 #region Main
 #region Gathering Azure AD Data
+#Load as ScriptBlock all the Tenant Information and Check Rules scripts available in Lib folder
 Write-Output -InputObject 'Loading Tenant Information and Check Rules scripts.'
 $Scriptblocks = @(
     (Get-ChildItem -Path "$PSScriptRoot\lib" -Filter 'TI*-*.ps1')
@@ -581,6 +725,7 @@ $Scriptblocks = @(
     (Get-Command $_.FullName).ScriptBlock
 }
 
+#Use Runspaces to run all the previously loaded scriptblocks
 Write-Output -InputObject "Start running scripts over target tenant: $($LoadedConfig.TenantId)"
 try {
     $Outputs = Invoke-ParallelRunSpace -Scriptblock $Scriptblocks -Parameter @{
@@ -593,12 +738,14 @@ catch {
     throw $_
 }
 
+#Create basic tenant information variables that may be require earlier than inside the Html content generation logics
 $TenantInfoBasics = ($Outputs | Where-Object -FilterScript {$_.Id -eq 'TI0001'}).Result
 $InitialDomain    = $TenantInfoBasics.Organization.verifiedDomains | Where-Object -FilterScript {$_.IsInitial -eq $true} | Select-Object -ExpandProperty Name
-$OutputFilePath   = '{0}\Output\{1}-{2:yyyyMMdd_HHmm}' -f $PSScriptRoot, $InitialDomain, $Start
-#endregion Gathering Azure AD Data
 
-#region Gathering Reports Indicator History (XML Files)
+#Base Output file path
+$BaseOutputFilePath = '{0}\Output\{1}-{2:yyyyMMdd_HHmm}' -f $PSScriptRoot, $InitialDomain, $Start
+
+#Gathering reports indicator history (Xml files)
 $IndicatorsHistory = Get-ChildItem -Path "$PSScriptRoot\Output\" -Filter "$InitialDomain-*.xml" | ForEach-Object -Process {
     $StrDate = $_.BaseName.Split('-')[1]
     $Data = Import-Clixml -Path $_.FullName
@@ -611,7 +758,7 @@ $IndicatorsHistory = Get-ChildItem -Path "$PSScriptRoot\Output\" -Filter "$Initi
         }
     }
 }
-#endregion Gathering Reports Indicator History (XML Files)
+#endregion Gathering Azure AD Data
 
 #region Generating HTML and XML Output File
 Write-Output -InputObject 'Start generating HTML content and file'
@@ -626,7 +773,7 @@ New-PSHtmlHtml -lang 'en' -Content {
         New-PSHtmlScript -src 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js'
         New-PSHtmlScript -src 'https://unpkg.com/bootstrap-table@1.20.2/dist/bootstrap-table.min.js'
         New-PSHtmlScript -src 'https://cdn.jsdelivr.net/npm/chart.js'
-        New-PSHtmlStyle -Content ".form-control-dark {color: #fff; background-color: rgba(255, 255, 255, .1);} .form-control-dark:focus {box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);} .sidebar {position: fixed;top: 0;bottom: 0;left: 0;z-index: 100;padding: 48px 0 0;} .dropdown-toggle { outline: 0; } .accordion-body.bg-dark {color: white;} .btn-toggle,.btn-toggle-nochild {padding: .25rem .5rem; font-weight: 600;} .btn-toggle.btn-light::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle.btn-dark::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle-nav a {padding: .1875rem .5rem; margin-top: .125rem; margin-left: 1.25rem;}"
+        New-PSHtmlStyle -Content ".form-control-dark {color: #fff; background-color: rgba(255, 255, 255, .1);} .form-control-dark:focus {box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);} .sidebar-overflow {height: 100%; overflow-x: auto;} .sidebar {position: fixed;top: 0;bottom: 0;left: 0;z-index: 100;padding: 48px 0 0;} .dropdown-toggle { outline: 0; } .accordion-body.bg-dark {color: white;} .btn-toggle,.btn-toggle-nochild {padding: .25rem .5rem; font-weight: 600;} .btn-toggle.btn-light::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle.btn-dark::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle-nav a {padding: .1875rem .5rem; margin-top: .125rem; margin-left: 1.25rem;}"
         New-PSHtmlScript -lang 'javascript' -Content "function searchNavbar() { let input = document.getElementById('searchBar').value; input = input.toLowerCase(); let x = document.getElementsByClassName('navitem'); for (i = 0; i < x.length; i++) { if (!x[i].innerHTML.toLowerCase().includes(input)) { x[i].style.display=`"none`" } else { x[i].style=`"`" } } }"
     }
     New-PSHtmlBody -Content {
@@ -725,7 +872,7 @@ New-PSHtmlHtml -lang 'en' -Content {
         }
         New-PSHtmlDiv -class 'row container-fluid' -style 'margin-top: 15px;' -Content {
             New-PSHtmlNav -class 'col-2 bg-light sidebar border-end' -Content {
-                New-PSHtmlDiv -class 'position-sticky sidebar-sticky' -Content {
+                New-PSHtmlDiv -class 'position-sticky sidebar-sticky sidebar-overflow' -Content {
                     New-PSHtmlUl -class 'list-unstyled' -id 'contentTable' -Content {
                         New-PSHtmlLi -class 'mb-1 navitem' -Content {
                             New-PSHtmlA -class 'btn btn-light btn-toggle-nochild' -href '#TenantInfoCard' -Content 'Tenant Informations'
@@ -1263,7 +1410,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                     New-PSHtmlP -Content $entry.Result.Remediation
                                                 }
                                                 #Output data
-                                                if ($null -ne $entry.Result.Data) {
+                                                if (![String]::IsNullOrEmpty($entry.Result.Data)) {
                                                     New-PSHtmlDiv -class 'py-2' -Content {
                                                         New-PSHtmlH4 -Content 'Report Data'
                                                         New-PSHtmlP -Content 'Here is what has been found:'
@@ -1346,23 +1493,23 @@ New-PSHtmlHtml -lang 'en' -Content {
         
 '@
     }
-} | Out-File -FilePath "$OutputFilePath.html" -Encoding 'utf8' -Force
+} | Out-File -FilePath "$BaseOutputFilePath.html" -Encoding 'utf8' -Force
 
 #Out XML File
 Write-Output -InputObject 'Start generating XML content and file'
 @{
     Indicators = $Indicators
     RawData    = $Outputs
-} | Export-Clixml -Path "$OutputFilePath.xml" -Depth 99 -Encoding UTF8 -Force
+} | Export-Clixml -Path "$BaseOutputFilePath.xml" -Depth 99 -Encoding UTF8 -Force
 #endregion Generating HTML and XML Output File
 
 #Write end message and open HTML File
 Write-Output -InputObject "Script took $(New-TimeSpan -Start $Start -End (Get-Date)) to run."
 Write-Output -InputObject 'Output files are available:'
-Write-Output -InputObject "`tHTML: $OutputFilePath.html"
-Write-Output -InputObject "`tXML : $OutputFilePath.xml"
+Write-Output -InputObject "`tHTML: $BaseOutputFilePath.html"
+Write-Output -InputObject "`tXML : $BaseOutputFilePath.xml"
 
 if ($OpenHtml) {
-    Start-Process -FilePath "$OutputFilePath.html"
+    Start-Process -FilePath "$BaseOutputFilePath.html"
 }
 #endregion Main

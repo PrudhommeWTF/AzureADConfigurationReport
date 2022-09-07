@@ -136,7 +136,7 @@ try {
         $Output.Result.Data        = $CloudAccounts
         $Output.Result.Message     = '{0} cloud users where created in the past 6 months, more than 1/3 of the overall created accounts. {1}' -f $CloudAccounts.Count, $Output.ResultMessage
         $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = "Failed"
+        $Output.Result.Status      = 'Fail'
     } else {
         $Output.Result.Score       = 100
         $Output.Result.Data        = $CloudAccounts

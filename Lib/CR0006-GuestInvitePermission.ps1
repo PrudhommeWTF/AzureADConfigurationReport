@@ -97,7 +97,7 @@ try {
         $Output.Result.Score = 0
         $Output.Result.Message = $Output.ResultMessage
         $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status = "Failed"
+        $Output.Result.Status = 'Fail'
     }
     else {
         $Output.Result.Score = 100

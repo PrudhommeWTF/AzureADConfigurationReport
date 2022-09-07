@@ -62,7 +62,6 @@ catch {
 #endregion GraphAPI Connection
 
 #region Get all Azure AD Guest Accounts
-$Endpoint         = 'users'
 $PropertiesToLoad = @(
     'id'
     'userType'
@@ -72,7 +71,7 @@ $PropertiesToLoad = @(
 )
 $GetUsers = @{
     Method      = 'GET'
-    Uri         = 'https://graph.microsoft.com/v1.0/{0}?$select={1}' -f $Endpoint, ($PropertiesToLoad -join ',')
+    Uri         = 'https://graph.microsoft.com/v1.0/users?$select={0}' -f ($PropertiesToLoad -join ',')
     ContentType = 'application/json'
     Headers     = @{
         Authorization = "Bearer $GraphToken"

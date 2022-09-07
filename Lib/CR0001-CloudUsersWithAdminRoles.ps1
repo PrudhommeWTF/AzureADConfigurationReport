@@ -168,7 +168,7 @@ try {
         $Output.Result.Data        = $CloudUserAsAdmin
         $Output.Result.Message     = $Output.ResultMessage.Replace('{COUNT}', $CloudUserAsAdmin.Count)
         $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = "Failed"
+        $Output.Result.Status      = 'Fail'
     } else {
         $Output.Result.Score       = 100
         $Output.Result.Message     = "No evidence of exposure"

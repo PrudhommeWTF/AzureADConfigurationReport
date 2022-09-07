@@ -129,7 +129,7 @@ try {
         $Output.Result.Data        = $StaleGuests
         $Output.Result.Message     = $Output.ResultMessage.Replace('{COUNT}',$StaleGuests.count)
         $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = "Failed"
+        $Output.Result.Status      = 'Fail'
     } elseif ($StaleGuests.count -gt 0) {
         $Output.Result.Score       = 100
         $Output.Result.Data        = $StaleGuests

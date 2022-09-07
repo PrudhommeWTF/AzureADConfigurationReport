@@ -196,7 +196,7 @@ try {
         $Output.Result.Data        = $OutputObjects
         $Output.Result.Message     = $Output.ResultMessage.Replace('{COUNT}',$outputObjects.count)
         $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = "Failed"
+        $Output.Result.Status      = 'Fail'
     } else {
         $Output.Result.Score       = 100
         $Output.Result.Message     = "No evidence of exposure"

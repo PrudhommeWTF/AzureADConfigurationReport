@@ -1,4 +1,4 @@
-﻿[CmdletBinding(
+[CmdletBinding(
     DefaultParameterSetName = 'Default'
 )]
 Param(
@@ -30,22 +30,26 @@ Param(
 #region Init
 $Start  = Get-Date
 $Output = @{
-    ID                     = 'CR0010'
+    ID                     = 'CR0033'
     Version                = [Version]'1.0.0.0'
-    CategoryId             = 2
-    Title                  = 'Unrestricted user consent allowed'
-    ScriptName             = 'CR0010-UserCanConsent'
-    Description            = 'This indicator checks if users are allowed to add applications from unverified publishers.'
-    Weight                 = 5
-    Severity               = 'Warning'
-    LikelihoodOfCompromise = 'When users are allowed to consent to any 3rd party applications, there is considerable risk that an allowed app will take intrusive or risky actions.'
-    ResultMessage          = 'Users are allowed to consent to risky 3rd party apps.'
-    Remediation            = 'To protect the confidentiality of company data and improve security posture, it is recommended that users not have the ability to consent to all 3rd party apps. The best practice is to allow user consent only for applications that have been published by a verified publisher and have administrators approve all other consent requests via the admin consent workflow.'
+    CategoryId             = 4
+    Title                  = 'Check user cannot create security groups'
+    ScriptName             = 'CR0033-UserCanCreateSecurityGroup'
+    Description            = @'
+Restrict security group creation to administrators only
+
+Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
+'@
+    Weight                 = 7 #0 to 7. 0 being informational and 7 being critical
+    Severity               = 'Critical' #Informational, Warning or Critical
+    LikelihoodOfCompromise = 'When creating security groups is enabled, all users in the directory are allowed to create new security groups and add members to those groups. Unless a business requires this day-to-day delegation, security group creation should be restricted to administrators only.'
+    ResultMessage          = 'Users can create security groups in Azure Active Directory.'
+    Remediation            = 'From the Azure Active Directory portal, navigate to the following blade: Groups > General, under setting. Set "Users can create security groups in Azure portals, API or PowerShell" to "No"'
     Permissions            = @('Policy.Read.All')
     SecurityFrameworks = @(
         @{
             Name = 'MITRE ATT&CK'
-            Tags = @('Persistence', 'Lateral Movement')
+            Tags = @('T1578','TA0005','M1018')
         }
     )
     Result                 = @{
@@ -83,40 +87,31 @@ catch {
 
 try {
     $GetAuthorizationPolicy = @{
-        Method = 'GET'
-        Uri = 'https://graph.microsoft.com/v1.0/policies/authorizationPolicy'
+        Method      = 'GET'
+        Uri         = 'https://graph.microsoft.com/beta/policies/authorizationPolicy/authorizationPolicy'
         ContentType = 'application/json'
-        Headers = @{
+        Headers     = @{
             Authorization = "Bearer $GraphToken"
         }
     }
 
     try {
-        $AuthorizationPolicyResult = Invoke-RestMethod @GetAuthorizationPolicy
+        $AuthorizationPolicy = Invoke-RestMethod @GetAuthorizationPolicy
     }
     catch {
         $_ | Write-Error
-        Continue
     }
 
-    <#
-    Corresponding values for .defaultUserRolePermissions.permissionGrantPoliciesAssigned:
-        Do not allow user consent = NULL
-        Allow user consent for apps from verified publishers, for selected permissions = ManagePermissionGrantsForSelf.microsoft-user-default-low
-        Allow user consent for apps = ManagePermissionGrantsForSelf.microsoft-user-default-legacy
-    #>
-    $AuthorizationPolicy = $AuthorizationPolicyResult.defaultUserRolePermissions.permissionGrantPoliciesAssigned
-
-    if ($AuthorizationPolicy -match "microsoft-user-default-legacy") {
+    if ($AuthorizationPolicy.defaultUserRolePermissions.allowedToCreateSecurityGroups -eq $false) {
+        $Output.Result.Score       = 100
+        $Output.Result.Status      = 'Pass'
+        $Output.Result.Message     = 'No sign of exposure'
+        $Output.Result.Remediation = 'None'
+    } else {
         $Output.Result.Score       = 0
+        $Output.Result.Status      = 'Fail'
         $Output.Result.Message     = $Output.ResultMessage
         $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = 'Fail'
-    } else {
-        $Output.Result.Score       = 100
-        $Output.Result.Message     = "No evidence of exposure"
-        $Output.Result.Remediation = "None"
-        $Output.Result.Status      = "Pass"
     }
 }
 catch {

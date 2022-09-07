@@ -280,7 +280,7 @@ if ((Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain -eq $true) {
             $Output.Result.Data        = $OutputObjects
             $Output.Result.Message     = $Output.ResultMessage.Replace('{COUNT}', $(@($OutputObjects | Sort-Object -Property AzureID -Unique).Count))
             $Output.Result.Remediation = $Output.Remediation
-            $Output.Result.Status      = "Failed"
+            $Output.Result.Status      = 'Fail'
         }
         else {
             $Output.Result.Score       = 100

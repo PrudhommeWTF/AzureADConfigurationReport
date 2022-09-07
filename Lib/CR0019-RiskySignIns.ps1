@@ -101,7 +101,7 @@ if ($null -eq $RiskySignins) {
     $Output.Result.Status        = 'Pass'
 } else {
     $Output.Result.Score         = 0
-    $Output.Result.Status        = 'Failed'
+    $Output.Result.Status        = 'Fail'
     $Output.Result.ResultMessage = $Output.ResultMessage
     $Output.Result.Remediation   = $Output.Remediation
     $Output.Result.Data          = $RiskySignins
