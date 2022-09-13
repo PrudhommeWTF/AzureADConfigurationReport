@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0031'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 1
     Title                  = 'Guest Access permissions'
     ScriptName             = 'CR0031-GuestAccessRestrictions'
@@ -89,46 +96,43 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
+$GetAuthorizationPolicy = @{
+    Method      = 'GET'
+    Uri         = 'https://graph.microsoft.com/beta/policies/authorizationPolicy/authorizationPolicy'
+    ContentType = 'application/json'
+    Headers     = @{
+        Authorization = "Bearer $GraphToken"
+    }
+}
+
 try {
-    $GetAuthorizationPolicy = @{
-        Method      = 'GET'
-        Uri         = 'https://graph.microsoft.com/beta/policies/authorizationPolicy/authorizationPolicy'
-        ContentType = 'application/json'
-        Headers     = @{
-            Authorization = "Bearer $GraphToken"
-        }
-    }
-
-    try {
-        $AuthorizationPolicy = Invoke-RestMethod @GetAuthorizationPolicy
-    }
-    catch {
-        $_ | Write-Error
-    }
-
-    switch ($AuthorizationPolicy.guestUserRoleId) {
-        'a0b1b346-4d3e-4e8b-98f8-753987be4970' {
-            $Output.Result.Score       = 0
-            $Output.Result.Status      = 'Fail'
-            $Output.Result.Message     = 'Same as member users - Guests have the same access to Azure AD resources as member users'
-            $Output.Result.Remediation = $Output.Remediation
-        }
-        '10dae51f-b6af-4016-8d66-8c2a99b929b3' {
-            $Output.Result.Score       = 50
-            $Output.Result.Status      = 'Warning'
-            $Output.Result.Message     = 'Limited access (default) - Guests can see membership of all non-hidden groups'
-            $Output.Result.Remediation = $Output.Remediation
-        }
-        '2af84b1e-32c8-42b7-82bc-daa82404023b' {
-            $Output.Result.Score   = 100
-            $Output.Result.Status  = 'Pass'
-            $Output.Result.Message = "Restricted access (new) - Guests can't see membership of any groups"
-        }
-    }
+    $AuthorizationPolicy = Invoke-RestMethod @GetAuthorizationPolicy
 }
 catch {
     $_ | Write-Error
 }
+
+switch ($AuthorizationPolicy.guestUserRoleId) {
+    'a0b1b346-4d3e-4e8b-98f8-753987be4970' {
+        $Output.Result.Score       = 0
+        $Output.Result.Status      = 'Fail'
+        $Output.Result.Message     = 'Same as member users - Guests have the same access to Azure AD resources as member users'
+        $Output.Result.Remediation = $Output.Remediation
+    }
+    '10dae51f-b6af-4016-8d66-8c2a99b929b3' {
+        $Output.Result.Score       = 50
+        $Output.Result.Status      = 'Warning'
+        $Output.Result.Message     = 'Limited access (default) - Guests can see membership of all non-hidden groups'
+        $Output.Result.Remediation = $Output.Remediation
+    }
+    '2af84b1e-32c8-42b7-82bc-daa82404023b' {
+        $Output.Result.Score   = 100
+        $Output.Result.Status  = 'Pass'
+        $Output.Result.Message = "Restricted access (new) - Guests can't see membership of any groups"
+    }
+}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

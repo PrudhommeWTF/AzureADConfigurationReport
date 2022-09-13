@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0033'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 4
     Title                  = 'Check user cannot create security groups'
     ScriptName             = 'CR0033-UserCanCreateSecurityGroup'
@@ -85,38 +92,35 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
+$GetAuthorizationPolicy = @{
+    Method      = 'GET'
+    Uri         = 'https://graph.microsoft.com/beta/policies/authorizationPolicy/authorizationPolicy'
+    ContentType = 'application/json'
+    Headers     = @{
+        Authorization = "Bearer $GraphToken"
+    }
+}
+
 try {
-    $GetAuthorizationPolicy = @{
-        Method      = 'GET'
-        Uri         = 'https://graph.microsoft.com/beta/policies/authorizationPolicy/authorizationPolicy'
-        ContentType = 'application/json'
-        Headers     = @{
-            Authorization = "Bearer $GraphToken"
-        }
-    }
-
-    try {
-        $AuthorizationPolicy = Invoke-RestMethod @GetAuthorizationPolicy
-    }
-    catch {
-        $_ | Write-Error
-    }
-
-    if ($AuthorizationPolicy.defaultUserRolePermissions.allowedToCreateSecurityGroups -eq $false) {
-        $Output.Result.Score       = 100
-        $Output.Result.Status      = 'Pass'
-        $Output.Result.Message     = 'No sign of exposure'
-        $Output.Result.Remediation = 'None'
-    } else {
-        $Output.Result.Score       = 0
-        $Output.Result.Status      = 'Fail'
-        $Output.Result.Message     = $Output.ResultMessage
-        $Output.Result.Remediation = $Output.Remediation
-    }
+    $AuthorizationPolicy = Invoke-RestMethod @GetAuthorizationPolicy
 }
 catch {
     $_ | Write-Error
 }
+
+if ($AuthorizationPolicy.defaultUserRolePermissions.allowedToCreateSecurityGroups -eq $false) {
+    $Output.Result.Score       = 100
+    $Output.Result.Status      = 'Pass'
+    $Output.Result.Message     = 'No sign of exposure'
+    $Output.Result.Remediation = 'None'
+} else {
+    $Output.Result.Score       = 0
+    $Output.Result.Status      = 'Fail'
+    $Output.Result.Message     = $Output.ResultMessage
+    $Output.Result.Remediation = $Output.Remediation
+}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0001'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 3
     Title                  = 'Cloud accounts that have administrative roles'
     ScriptName             = 'CR0001-CloudUsersWithAdminRoles'
@@ -104,11 +111,39 @@ catch {
 }
 #endregion GraphAPI Connection
 
-try {
-    foreach ($RoleGuid in $AADRolesMapping.Keys) {
-        $GetActiveAADAdministrators = @{
+#region Main
+foreach ($RoleGuid in $AADRolesMapping.Keys) {
+    $GetActiveAADAdministrators = @{
+        Method = 'GET'
+        Uri = 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments?$filter=roleDefinitionId eq {0}' -f "'$($RoleGuid)'"
+        ContentType = 'application/json'
+        Headers = @{
+            Authorization = "Bearer $GraphToken"
+        }
+    }
+
+    try {
+        $AADAdministratorsResult = Invoke-RestMethod @GetActiveAADAdministrators
+    }
+    catch {
+        $_ | Write-Error
+        Continue
+    }
+
+    $ActiveAdminsResponse = @($AADAdministratorsResult.value)
+    $AllAdmins += $AADAdministratorsResult.Value
+
+    while ($null -ne $AADAdministratorsResult.'@odata.nextLink') {
+        $GetActiveAADAdministrators.Uri = $AADAdministratorsResult.'@odata.nextLink'
+        $AADAdministratorsResult = Invoke-RestMethod @GetActiveAADAdministrators
+        $ActiveAdminsResponse += $AADAdministratorsResult.value
+        $AllAdmins += $AADAdministratorsResult.Value
+    }
+
+    foreach ($admin in $ActiveAdminsResponse) {
+        $GetObject = @{
             Method = 'GET'
-            Uri = 'https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments?$filter=roleDefinitionId eq {0}' -f "'$($RoleGuid)'"
+            Uri = "https://graph.microsoft.com/v1.0/directoryObjects/$($admin.principalId)?`$select=id,userPrincipalName,onPremisesSyncEnabled,accountEnabled,displayName"
             ContentType = 'application/json'
             Headers = @{
                 Authorization = "Bearer $GraphToken"
@@ -116,69 +151,38 @@ try {
         }
 
         try {
-            $AADAdministratorsResult = Invoke-RestMethod @GetActiveAADAdministrators
+            $Object = Invoke-RestMethod @GetObject
         }
         catch {
             $_ | Write-Error
-            Continue
         }
 
-        $ActiveAdminsResponse = @($AADAdministratorsResult.value)
-        $AllAdmins += $AADAdministratorsResult.Value
-
-        while ($null -ne $AADAdministratorsResult.'@odata.nextLink') {
-            $GetActiveAADAdministrators.Uri = $AADAdministratorsResult.'@odata.nextLink'
-            $AADAdministratorsResult = Invoke-RestMethod @GetActiveAADAdministrators
-            $ActiveAdminsResponse += $AADAdministratorsResult.value
-            $AllAdmins += $AADAdministratorsResult.Value
-        }
-
-        foreach ($admin in $ActiveAdminsResponse) {
-            $GetObject = @{
-                Method = 'GET'
-                Uri = "https://graph.microsoft.com/v1.0/directoryObjects/$($admin.principalId)?`$select=id,userPrincipalName,onPremisesSyncEnabled,accountEnabled,displayName"
-                ContentType = 'application/json'
-                Headers = @{
-                    Authorization = "Bearer $GraphToken"
-                }
-            }
-
-            try {
-                $Object = Invoke-RestMethod @GetObject
-            }
-            catch {
-                $_ | Write-Error
-            }
-
-            if ($null -eq $Object.onPremisesSyncEnabled) {
-                $null = $CloudUserAsAdmin.Add(([PSCustomObject][Ordered]@{
-                    ObjectId          = $Object.id
-                    Type              = $Object.'@odata.type'.Split('.')[2]
-                    DisplayName       = $Object.displayName
-                    UserPrincipalName = $Object.userPrincipalName
-                    State             = $Object.accountEnabled
-                    Role              = $AADRolesMapping[$RoleGuid]
-                }))
-            }
+        if ($null -eq $Object.onPremisesSyncEnabled) {
+            $null = $CloudUserAsAdmin.Add(([PSCustomObject][Ordered]@{
+                ObjectId          = $Object.id
+                Type              = $Object.'@odata.type'.Split('.')[2]
+                DisplayName       = $Object.displayName
+                UserPrincipalName = $Object.userPrincipalName
+                State             = $Object.accountEnabled
+                Role              = $AADRolesMapping[$RoleGuid]
+            }))
         }
     }
+}
 
-    if ($CloudUserAsAdmin.count -gt 0) {
-        $Output.Result.Score       = [Math]::Round(100 - (($CloudUserAsAdmin.Count / ($AllAdmins | Group-Object -Property principalId | Select-Object -ExpandProperty Name | Measure-Object).Count) * 100), 0)
-        $Output.Result.Data        = $CloudUserAsAdmin
-        $Output.Result.Message     = $Output.ResultMessage.Replace('{COUNT}', $CloudUserAsAdmin.Count)
-        $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = 'Fail'
-    } else {
-        $Output.Result.Score       = 100
-        $Output.Result.Message     = "No evidence of exposure"
-        $Output.Result.Remediation = "None"
-        $Output.Result.Status      = "Pass"
-    }
+if ($CloudUserAsAdmin.count -gt 0) {
+    $Output.Result.Score       = [Math]::Round(100 - (($CloudUserAsAdmin.Count / ($AllAdmins | Group-Object -Property principalId | Select-Object -ExpandProperty Name | Measure-Object).Count) * 100), 0)
+    $Output.Result.Data        = $CloudUserAsAdmin
+    $Output.Result.Message     = $Output.ResultMessage.Replace('{COUNT}', $CloudUserAsAdmin.Count)
+    $Output.Result.Remediation = $Output.Remediation
+    $Output.Result.Status      = 'Fail'
+} else {
+    $Output.Result.Score       = 100
+    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Remediation = "None"
+    $Output.Result.Status      = "Pass"
 }
-catch {
-    $_ | Write-Error
-}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

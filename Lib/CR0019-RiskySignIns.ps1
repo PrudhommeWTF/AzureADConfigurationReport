@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0019'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 5
     Title                  = 'Azure AD Risky Detections'
     ScriptName             = 'CR0019-RiskySignIns'
@@ -81,6 +88,7 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
 try {
     $RiskDetections = @{
         Method = 'GET'
@@ -106,6 +114,7 @@ if ($null -eq $RiskySignins) {
     $Output.Result.Remediation   = $Output.Remediation
     $Output.Result.Data          = $RiskySignins
 }
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

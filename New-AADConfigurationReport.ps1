@@ -48,7 +48,9 @@ Function New-PSHtmlBootstrapTable {
 
         [Switch]$Searchable,
 
-        [Switch]$Paged
+        [Switch]$Paged,
+
+        [Switch]$Sortable
     )
     if ($null -eq $PropertiesMap) {
         $PropertiesMap = $Data | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name | ForEach-Object -Process {
@@ -60,14 +62,21 @@ Function New-PSHtmlBootstrapTable {
     }
 
     [Collections.Hashtable]$BootstrapTable = @{
-        columns = $PropertiesMap
-        data    = $Data
+        columns              = $PropertiesMap
+        data                 = $Data
+        showColums           = $true
+        showColumnsSearch    = $true
+        showColumnsToggleAll = $true
     }
     if ($Searchable) {
         $null = $BootstrapTable.Add('search', $true)
     }
     if ($Paged) {
         $null = $BootstrapTable.Add('pagination', $true)
+        $null = $BootstrapTable.Add('showExtendedPagination', $true)
+    }
+    if ($Sortable) {
+        $null = $BootstrapTable.Add('sortable', $true)
     }
 
     New-PSHtmlTable -class 'table table-striped' -id $TableId
@@ -913,7 +922,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                         'aria-expanded'  = $false
                         'aria-controls'  = $TenantInfosCardId
                     } -Content {
-                        New-PSHtmlH5 -Content 'Tenant Informations'
+                        New-PSHtmlH5 -Content 'Tenant Informations and Statistics'
                     }
                     New-PSHtmlDiv -class 'card-body collapse' -id $TenantInfosCardId -Content {
                         New-PSHtmlP -Content 'This section shows the main technical characteristics of the tenant.'
@@ -931,7 +940,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                     New-PSHtmlTd -Content $InitialDomain
                                     New-PSHtmlTd -Content $TenantInfoBasics.Organization.id
                                     New-PSHtmlTd -Content $([DateTime]$TenantInfoBasics.Organization.createdDatetime)
-                                    New-PSHtmlTd -Content '' #$TenantInfoBasics.OrgInfo
+                                    New-PSHtmlTd -Content $TenantInfoBasics.OIDConfig.tenant_region_scope
                                 }
                             }
                         }
@@ -1054,12 +1063,88 @@ New-PSHtmlHtml -lang 'en' -Content {
                                 } -Content {
                                     New-PSHtmlDiv -class 'container-fluid' -Content {
                                         New-PSHtmlP -Content ''
-                                        New-PSHtmlBootstrapTable -TableId 'DNSDomainDetails' -Data $($TenantInfoBasics.Domains | Select-Object -Property Id,AuthenticationType,IsDefault,IsInitial,IsVerified,@{
+                                        New-PSHtmlBootstrapTable -TableId 'DNSDomainDetails' -Data $($TenantInfoBasics.Organization.verifiedDomains | Select-Object -Property Id,AuthenticationType,IsDefault,IsInitial,IsVerified,@{
                                             Name = 'SupportedServices'
                                             Expression = {
                                                 $_.supportedServices -join ', '
                                             }
-                                        }) -Searchable -Paged
+                                        }) -PropertiesMap @(
+                                            @{
+                                                field = 'id'
+                                                title = 'Name'
+                                            }, @{
+                                                field = 'authenticationType'
+                                                title = 'Authentication Type'
+                                            }, @{
+                                                field = 'isDefault'
+                                                title = 'Default Domain'
+                                            }, @{
+                                                field = 'isInitial'
+                                                title = 'Initial Domain'
+                                            }, @{
+                                                field = 'isVerified'
+                                                title = 'Verification Done'
+                                            }, @{
+                                                field = 'SupportedServices'
+                                                title = 'Service available'
+                                            }
+                                        ) -Searchable -Paged -Sortable
+                                    }
+                                }
+                            }
+                            #External Tenant usage
+                            New-PSHtmldiv -class 'accordion-item' -Content {
+                                $ExternalTenants = ($Outputs | Where-Object -FilterScript {$_.Id -eq 'TI0004'}).Result
+                                New-PSHtmlh2 -class 'accordion-header' -id 'ExternalTenantUsageLabel' -Content {
+                                    New-PSHtmlbutton -class 'accordion-button' -OtherAttributes @{
+                                        'type'           = 'button'
+                                        'data-bs-toggle' = 'collapse'
+                                        'data-bs-target' = '#ExternalTenantUsageCollapse'
+                                        'aria-controls'  = 'ExternalTenantUsageCollapse'
+                                    } -Content 'External Identities Tenant usage'
+                                }
+                                New-PSHtmldiv -id 'ExternalTenantUsageCollapse' -class 'accordion-collapse collapse show' -OtherAttribute @{
+                                    'aria-labelledby' = 'ExternalTenantUsageLabel'
+                                    'data-bs-parent'  = '#tenantInfoAccordion'
+                                } -Content {
+                                    New-PSHtmlDiv -class 'container-fluid' -Content {
+                                        New-PSHtmlP -Content ''
+                                        New-PSHtmlBootstrapTable -TableId 'ExternalTenantUsageDetails' -Data $($ExternalTenants | ForEach-Object -Process {
+                                            $DNSDomains = $_.Group.DomainName | Group-Object | Sort-Object -Property Count -Descending
+                                            if ($_.Name -eq '9cd80435-793b-4f48-844b-6b3f37d1c1f3') {
+                                                $TenantName = 'Personal Email Addresses'
+                                            } else {
+                                                $TenantName = ($DNSDomains | Select-Object -First 1).Name
+                                            }
+                                            [PSCustomObject][Ordered]@{
+                                                Name            = $TenantName
+                                                TenantId        = $_.Name
+                                                Region          = $($_.Group.Region | Get-Unique)
+                                                NumberOfGuests  = $_.Count
+                                                NumberOfDomains = $DNSDomains.Count
+                                                DomainNames     = $(($DNSDomains | ForEach-Object -Process {'{0}: {1}' -f $_.Name, $_.Count}) -join [System.Environment]::NewLine)
+                                            }
+                                        }) -PropertiesMap @(
+                                            @{
+                                                field = 'Name'
+                                                title = 'Name'
+                                            }, @{
+                                                field = 'TenantId'
+                                                title = 'Tenant Id'
+                                            }, @{
+                                                field = 'Region'
+                                                title = 'Tenant Region'
+                                            }, @{
+                                                field = 'NumberOfGuests'
+                                                title = 'Number Of Guests'
+                                            }, @{
+                                                field = 'NumberOfDomains'
+                                                title = 'Number Of Domains'
+                                            }, @{
+                                                field = 'DomainNames'
+                                                title = 'Domain Names usage'
+                                            }
+                                        ) -Searchable -Paged -Sortable
                                     }
                                 }
                             }
@@ -1268,7 +1353,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                             'data-bs-target' = "#offcanvas$($entry.Id)"
                                                             'aria-controls'  = "offcanvas$($entry.Id)"
                                                         } -style '--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;' -Content 'Script Details'
-                                                        New-PSHtmlDiv -class 'offcanvas offcanvas-end bg-light' -style 'width: 25vw;' -id "offcanvas$($entry.Id)" -OtherAttributes @{
+                                                        New-PSHtmlDiv -class 'offcanvas offcanvas-end bg-light' -style 'width: 50vw;' -id "offcanvas$($entry.Id)" -OtherAttributes @{
                                                             'tabindex' = -1
                                                             'aria-labelledby' = "offcanvas$($entry.Id)Label"
                                                         } -Content {
@@ -1299,6 +1384,14 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                                             'aria-controls'  = "$($entry.Id)AADPermissions"
                                                                             'aria-selected'  = $false
                                                                         } -Content 'Azure AD Permissions'
+                                                                        New-PSHtmlbutton -class 'nav-link' -id "$($entry.Id)ScriptChangeLog-tab" -OtherAttributes @{
+                                                                            'data-bs-toggle' = 'tab'
+                                                                            'data-bs-target' = "#$($entry.Id)ScriptChangeLog"
+                                                                            'type'           = 'button'
+                                                                            'role'           = 'tab'
+                                                                            'aria-controls'  = "$($entry.Id)ScriptChangeLog"
+                                                                            'aria-selected'  = $false
+                                                                        } -Content 'Script Change Log'
                                                                     }
                                                                 }
                                                                 New-PSHtmldiv -class 'tab-content mt-2' -Content {
@@ -1310,7 +1403,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                                         New-PSHtmlTable -class 'table table-stripped' -Content {
                                                                             New-PSHtmlTr -Content {
                                                                                 New-PSHtmlTh -Content 'Version'
-                                                                                New-PSHtmlTd -Content $entry.Version
+                                                                                New-PSHtmlTd -Content $($entry.ChangeLog | Sort-Object -Property Date -Descending | Select-Object -First 1 -ExpandProperty Version)
                                                                             }
                                                                             New-PSHtmlTr -Content {
                                                                                 New-PSHtmlTh -Content 'Execution time'
@@ -1329,6 +1422,28 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                                                 New-PSHtmlLi -Content $_
                                                                             }
                                                                         }                    
+                                                                    }
+                                                                    New-PSHtmldiv -class 'tab-pane fade' -id "$($entry.Id)ScriptChangeLog" -OtherAttributes @{
+                                                                        'role'            = 'tabpanel'
+                                                                        'aria-labelledby' = "$($entry.Id)ScriptChangeLog-tab"
+                                                                        'tabindex'        = 0
+                                                                    } -Content {
+                                                                        New-PSHtmlP -Content 'Script Change Log:'
+                                                                        New-PSHtmlBootstrapTable -TableId "$($entry.Id)ChangeLogTable" -Data $entry.ChangeLog -Searchable -Paged -Sortable -PropertiesMap @(
+                                                                            @{
+                                                                                field = 'Version'
+                                                                                title = 'Version'
+                                                                            }, @{
+                                                                                field = 'ChangeLog'
+                                                                                title = 'Changes'
+                                                                            }, @{
+                                                                                field = 'Date'
+                                                                                title = 'Date'
+                                                                            }, @{
+                                                                                field = 'Author'
+                                                                                title = 'Author'
+                                                                            }
+                                                                        )
                                                                     }
                                                                 }
                                                             }
@@ -1414,7 +1529,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                     New-PSHtmlDiv -class 'py-2' -Content {
                                                         New-PSHtmlH4 -Content 'Report Data'
                                                         New-PSHtmlP -Content 'Here is what has been found:'
-                                                        New-PSHtmlBootstrapTable -TableId "$($entry.Id)table" -Data $entry.Result.Data -Searchable -Paged
+                                                        New-PSHtmlBootstrapTable -TableId "$($entry.Id)table" -Data $entry.Result.Data -Searchable -Paged -Sortable
                                                     }
                                                 }
                                             }

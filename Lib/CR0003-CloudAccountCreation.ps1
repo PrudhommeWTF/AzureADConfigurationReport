@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0003'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 1
     Title                  = 'Cloud only account creation'
     ScriptName             = 'CR0003-CloudAccountCreation'
@@ -79,75 +86,72 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
 #Check if Organization is using Azure AD Connect. If not, this indicator is useless
+#region Get All AAD Users created within the last 6 months
+$AADFilter = @(
+    "userType eq 'Member'"
+    "createdDateTime ge $($Start.AddMonths(-6).ToString('yyyy-MM-ddTHH:mm:ssZ'))"
+)
+$PropertiesToLoad = @(
+    'id'
+    'userPrincipalName'
+    'displayName'
+    'createdDateTime'
+    'accountEnabled'
+    'onPremisesSyncEnabled'
+)
+$GetAADUsers = @{
+    Method      = 'GET'
+    Uri         = 'https://graph.microsoft.com/v1.0/users?$filter={0}&$select={1}' -f ($AADFilter -join ' and '), ($PropertiesToLoad -join ',')
+    ContentType = 'application/json'
+    Headers     = @{
+        Authorization = "Bearer $GraphToken"
+    }
+}
+
 try {
-    #region Get All AAD Users created within the last 6 months
-    $AADFilter = @(
-        "userType eq 'Member'"
-        "createdDateTime ge $($Start.AddMonths(-6).ToString('yyyy-MM-ddTHH:mm:ssZ'))"
-    )
-    $PropertiesToLoad = @(
-        'id'
-        'userPrincipalName'
-        'displayName'
-        'createdDateTime'
-        'accountEnabled'
-        'onPremisesSyncEnabled'
-    )
-    $GetAADUsers = @{
-        Method      = 'GET'
-        Uri         = 'https://graph.microsoft.com/v1.0/users?$filter={0}&$select={1}' -f ($AADFilter -join ' and '), ($PropertiesToLoad -join ',')
-        ContentType = 'application/json'
-        Headers     = @{
-            Authorization = "Bearer $GraphToken"
-        }
-    }
-
-    try {
-        $AADUsersResult = Invoke-RestMethod @GetAADUsers
-    }
-    catch {
-        $_ | Write-Error
-        Continue
-    }
-
-    $AADUsersResponse = @($AADUsersResult.value)
-
-    while ($null -ne $AADUsersResult.'@odata.nextLink') {
-        $GetAADUsers.Uri = $AADUsersResult.'@odata.nextLink'
-        $AADUsersResult = Invoke-RestMethod @GetAADUsers
-        $AADUsersResponse += $AADUsersResult.value
-    }
-    #endregion Get All AAD Users created within the last 6 months
-
-    #Filter all the synced user objects
-    $AADUsersResponse | Where-Object -FilterScript {$_.onPremisesSyncEnabled -eq ''} | ForEach-Object {
-        $null = $CloudAccounts.Add(([PSCustomObject][Ordered]@{
-            ObjectId          = $_.id
-            UserPrincipalName = $_.userPrincipalName
-            DisplayName       = $_.displayName
-            AccountEnabled    = $_.accountEnabled
-            CreationDate      = [DateTime]$_.createdDateTime
-        }))
-    }
-
-    if ($CloudAccounts.Count -gt ($AADUsersResponse.Count*(1/3))) {
-        $Output.Result.Score       = 0
-        $Output.Result.Data        = $CloudAccounts
-        $Output.Result.Message     = '{0} cloud users where created in the past 6 months, more than 1/3 of the overall created accounts. {1}' -f $CloudAccounts.Count, $Output.ResultMessage
-        $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = 'Fail'
-    } else {
-        $Output.Result.Score       = 100
-        $Output.Result.Data        = $CloudAccounts
-        $Output.Result.Message     = '{0} cloud users where created in the past 6 months.' -f $CloudAccounts.Count
-        $Output.Result.Remediation = "None"
-        $Output.Result.Status      = "Pass"
-    }
+    $AADUsersResult = Invoke-RestMethod @GetAADUsers
 }
 catch {
     $_ | Write-Error
+    Continue
 }
+
+$AADUsersResponse = @($AADUsersResult.value)
+
+while ($null -ne $AADUsersResult.'@odata.nextLink') {
+    $GetAADUsers.Uri = $AADUsersResult.'@odata.nextLink'
+    $AADUsersResult = Invoke-RestMethod @GetAADUsers
+    $AADUsersResponse += $AADUsersResult.value
+}
+#endregion Get All AAD Users created within the last 6 months
+
+#Filter all the synced user objects
+$AADUsersResponse | Where-Object -FilterScript {$_.onPremisesSyncEnabled -eq ''} | ForEach-Object {
+    $null = $CloudAccounts.Add(([PSCustomObject][Ordered]@{
+        ObjectId          = $_.id
+        UserPrincipalName = $_.userPrincipalName
+        DisplayName       = $_.displayName
+        AccountEnabled    = $_.accountEnabled
+        CreationDate      = [DateTime]$_.createdDateTime
+    }))
+}
+
+if ($CloudAccounts.Count -gt ($AADUsersResponse.Count*(1/3))) {
+    $Output.Result.Score       = 0
+    $Output.Result.Data        = $CloudAccounts
+    $Output.Result.Message     = '{0} cloud users where created in the past 6 months, more than 1/3 of the overall created accounts. {1}' -f $CloudAccounts.Count, $Output.ResultMessage
+    $Output.Result.Remediation = $Output.Remediation
+    $Output.Result.Status      = 'Fail'
+} else {
+    $Output.Result.Score       = 100
+    $Output.Result.Data        = $CloudAccounts
+    $Output.Result.Message     = '{0} cloud users where created in the past 6 months.' -f $CloudAccounts.Count
+    $Output.Result.Remediation = "None"
+    $Output.Result.Status      = "Pass"
+}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

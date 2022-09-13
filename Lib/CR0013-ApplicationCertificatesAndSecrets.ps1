@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0013'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 2
     Title                  = 'Application Certificates & Secrets creation'
     ScriptName             = 'CR0013-ApplicationCertificatesAndSecrets'
@@ -81,78 +88,75 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
+#region Gather Azure AD Applications
+$GetApplications = @{
+    Method      = 'GET'
+    Uri         = 'https://graph.microsoft.com/v1.0/applications'
+    ContentType = 'application/json'
+    Headers     = @{
+        Authorization = "Bearer $GraphToken"
+    }
+}
+
 try {
-    #region Gather Azure AD Applications
-    $GetApplications = @{
-        Method      = 'GET'
-        Uri         = 'https://graph.microsoft.com/v1.0/applications'
-        ContentType = 'application/json'
-        Headers     = @{
-            Authorization = "Bearer $GraphToken"
-        }
-    }
-
-    try {
-        $ApplicationsResult = Invoke-RestMethod @GetApplications
-    }
-    catch {
-        $_ | Write-Error
-    }
-
-    [Collections.ArrayList]$Applications = $ApplicationsResult.Value | Where-Object -FilterScript {$_.keyCredentials -ne $null -or $_.passwordCredentials -ne $null}
-
-    while ($null -ne $ApplicationsResult.'@odata.nextLink') {
-        $GetApplications.Uri = $ApplicationsResult.'@odata.nextLink'
-        $ApplicationsResult = Invoke-RestMethod @GetApplications
-        $Applications += $ApplicationsResult.Value | Where-Object -FilterScript {$_.keyCredentials -ne $null -or $_.passwordCredentials -ne $null}
-    }
-    #endregion Gather Azure AD Applications
-
-    #check Certificate & Secrets creation timeline & warning
-    $CertsAndCredsTable = foreach ($app in $Applications) {
-        foreach ($cert in $app.keyCredentials) {
-            [PSCustomObject][Ordered]@{
-                AppId         = $app.id
-                AppName       = $app.displayName
-                Type          = 'Certificate'
-                DisplayName   = $cert.displayName
-                StartDateTime = ([DateTime]$cert.startDateTime).ToString()
-                EndDateTime   = ([DateTime]$cert.endDateTime).ToString()
-                ExpiringSoon  = $(if ([DateTime]$cert.endDateTime -gt $Start -and [DateTime]$cert.endDateTime -lt $Start.AddMonths(6)) {$true} else {$false})
-                Expired       = $(if ([DateTime]$cert.endDateTime -lt $Start) {$true} else {$false})
-            }
-        }
-        foreach ($secret in $app.passwordCredentials) {
-            [PSCustomObject][Ordered]@{
-                AppId         = $app.id
-                AppName       = $app.displayName
-                Type          = 'Secret'
-                DisplayName   = $secret.displayName
-                StartDateTime = ([DateTime]$secret.startDateTime).ToString()
-                EndDateTime   = ([DateTime]$secret.endDateTime).ToString()
-                ExpiringSoon  = $(if ([DateTime]$secret.endDateTime -gt $Start -and [DateTime]$secret.endDateTime -lt $Start.AddMonths(6)) {$true} else {$false})
-                Expired       = $(if ([DateTime]$secret.endDateTime -lt $Start) {$true} else {$false})
-            }
-        }
-    }
-
-    if ($CertsAndCredsTable | Where-Object -FilterScript {$_.ExpiringSoon -eq $true}) {
-        $Output.Result.Score       = [Math]::Round(100 - ((($CertsAndCredsTable | Where-Object -FilterScript {$_.ExpiringSoon -eq $true} | Measure-Object).Count / $Applications.Count) * 100),0)
-        $Output.Result.Data        = $CertsAndCredsTable
-        $Output.Result.Message     = $Output.ResultMessage
-        $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = 'Fail'
-
-    } else {
-        $Output.Result.Score       = 100
-        $Output.Result.Message     = 'No evidence of exposure'
-        $Output.Result.Remediation = 'None'
-        $Output.Result.Status      = 'Pass'
-    }
+    $ApplicationsResult = Invoke-RestMethod @GetApplications
 }
 catch {
     $_ | Write-Error
 }
+
+[Collections.ArrayList]$Applications = $ApplicationsResult.Value | Where-Object -FilterScript {$_.keyCredentials -ne $null -or $_.passwordCredentials -ne $null}
+
+while ($null -ne $ApplicationsResult.'@odata.nextLink') {
+    $GetApplications.Uri = $ApplicationsResult.'@odata.nextLink'
+    $ApplicationsResult = Invoke-RestMethod @GetApplications
+    $Applications += $ApplicationsResult.Value | Where-Object -FilterScript {$_.keyCredentials -ne $null -or $_.passwordCredentials -ne $null}
+}
+#endregion Gather Azure AD Applications
+
+#check Certificate & Secrets creation timeline & warning
+$CertsAndCredsTable = foreach ($app in $Applications) {
+    foreach ($cert in $app.keyCredentials) {
+        [PSCustomObject][Ordered]@{
+            AppId         = $app.id
+            AppName       = $app.displayName
+            Type          = 'Certificate'
+            DisplayName   = $cert.displayName
+            StartDateTime = ([DateTime]$cert.startDateTime).ToString()
+            EndDateTime   = ([DateTime]$cert.endDateTime).ToString()
+            ExpiringSoon  = $(if ([DateTime]$cert.endDateTime -gt $Start -and [DateTime]$cert.endDateTime -lt $Start.AddMonths(6)) {$true} else {$false})
+            Expired       = $(if ([DateTime]$cert.endDateTime -lt $Start) {$true} else {$false})
+        }
+    }
+    foreach ($secret in $app.passwordCredentials) {
+        [PSCustomObject][Ordered]@{
+            AppId         = $app.id
+            AppName       = $app.displayName
+            Type          = 'Secret'
+            DisplayName   = $secret.displayName
+            StartDateTime = ([DateTime]$secret.startDateTime).ToString()
+            EndDateTime   = ([DateTime]$secret.endDateTime).ToString()
+            ExpiringSoon  = $(if ([DateTime]$secret.endDateTime -gt $Start -and [DateTime]$secret.endDateTime -lt $Start.AddMonths(6)) {$true} else {$false})
+            Expired       = $(if ([DateTime]$secret.endDateTime -lt $Start) {$true} else {$false})
+        }
+    }
+}
+
+if ($CertsAndCredsTable | Where-Object -FilterScript {$_.ExpiringSoon -eq $true}) {
+    $Output.Result.Score       = [Math]::Round(100 - ((($CertsAndCredsTable | Where-Object -FilterScript {$_.ExpiringSoon -eq $true} | Measure-Object).Count / $Applications.Count) * 100),0)
+    $Output.Result.Data        = $CertsAndCredsTable
+    $Output.Result.Message     = $Output.ResultMessage
+    $Output.Result.Remediation = $Output.Remediation
+    $Output.Result.Status      = 'Fail'
+
+} else {
+    $Output.Result.Score       = 100
+    $Output.Result.Message     = 'No evidence of exposure'
+    $Output.Result.Remediation = 'None'
+    $Output.Result.Status      = 'Pass'
+}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

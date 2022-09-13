@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0012'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 3
     Title                  = 'Privileged group contains guest account'
     ScriptName             = 'CR0012-GuestsWithAdminRoles'
@@ -99,10 +106,39 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
+$GetDirectoryRoles = @{
+    Method = 'GET'
+    Uri = 'https://graph.microsoft.com/v1.0/directoryRoles'
+    ContentType = 'application/json'
+    Headers = @{
+        Authorization = "Bearer $GraphToken"
+    }
+}
+
 try {
-    $GetDirectoryRoles = @{
+    $DirectoryRolesResult = Invoke-RestMethod @getDirectoryRoles
+}
+catch {
+    $_ | Write-Error
+    Continue
+}
+
+$DirectoryRoles = [System.Collections.ArrayList]@()
+$DirectoryRoles += $DirectoryRolesResult.value | Where-Object -FilterScript {$_.roleTemplateId -in $AADRolesMapping.keys}
+
+#The 'nextLink' property will keep being returned if there's another page
+While ($null -ne $DirectoryRolesResult.'@odata.nextLink') {
+    $GetDirectoryRoles.Uri = $DirectoryRolesResult.'@odata.nextLink'
+    $DirectoryRolesResult = Invoke-RestMethod @GetDirectoryRoles
+    $DirectoryRoles += $directoryRolesResult.value | Where-Object -FilterScript {$_.roleTemplateId -in $AADRolesMapping.keys}
+}
+
+if ($DirectoryRoles) {
+    #region Get all Azure AD Guest Accounts
+    $GetGuestUsers = @{
         Method = 'GET'
-        Uri = 'https://graph.microsoft.com/v1.0/directoryRoles'
+        Uri = "https://graph.microsoft.com/v1.0/users?`$filter=userType eq 'Guest'"
         ContentType = 'application/json'
         Headers = @{
             Authorization = "Bearer $GraphToken"
@@ -110,103 +146,71 @@ try {
     }
 
     try {
-        $DirectoryRolesResult = Invoke-RestMethod @getDirectoryRoles
+        $GuestUsersResult = Invoke-RestMethod @GetGuestUsers
     }
     catch {
         $_ | Write-Error
         Continue
     }
 
-    $DirectoryRoles = [System.Collections.ArrayList]@()
-    $DirectoryRoles += $DirectoryRolesResult.value | Where-Object -FilterScript {$_.roleTemplateId -in $AADRolesMapping.keys}
+    $GuestUsers = [System.Collections.ArrayList]@()
+    $GuestUsers.AddRange($GuestUsersResult.value)
 
     #The 'nextLink' property will keep being returned if there's another page
-    While ($null -ne $DirectoryRolesResult.'@odata.nextLink') {
-        $GetDirectoryRoles.Uri = $DirectoryRolesResult.'@odata.nextLink'
-        $DirectoryRolesResult = Invoke-RestMethod @GetDirectoryRoles
-        $DirectoryRoles += $directoryRolesResult.value | Where-Object -FilterScript {$_.roleTemplateId -in $AADRolesMapping.keys}
+    While ($null -ne $GuestUsersResult.'@odata.nextLink') {
+        $GetGuestUsers.Uri = $GuestUsersResult.'@odata.nextLink'
+        $GuestUsersResult = Invoke-RestMethod @GetGuestUsers
+        $GuestUsers.AddRange($GuestUsersResult.value)
     }
+    #endregion Get all Azure AD Guest Accounts
 
-    if ($DirectoryRoles) {
-        #region Get all Azure AD Guest Accounts
-        $GetGuestUsers = @{
+    #Loop through each role, get members, and check if they are a guest user
+    foreach ($role in $DirectoryRoles) {
+        $GetRoleMembers = @{
             Method = 'GET'
-            Uri = "https://graph.microsoft.com/v1.0/users?`$filter=userType eq 'Guest'"
+            Uri = "https://graph.microsoft.com/v1.0/directoryRoles/roleTemplateId=$($role.roleTemplateId)/members"
             ContentType = 'application/json'
             Headers = @{
                 Authorization = "Bearer $GraphToken"
             }
         }
 
-        try {
-            $GuestUsersResult = Invoke-RestMethod @GetGuestUsers
-        }
-        catch {
-            $_ | Write-Error
-            Continue
-        }
+        $RoleMembersResult = Invoke-RestMethod @GetRoleMembers
 
-        $GuestUsers = [System.Collections.ArrayList]@()
-        $GuestUsers.AddRange($GuestUsersResult.value)
+        $RoleMembers = [System.Collections.ArrayList]@()
+        $RoleMembers.AddRange($RoleMembersResult.value)
 
-        #The 'nextLink' property will keep being returned if there's another page
-        While ($null -ne $GuestUsersResult.'@odata.nextLink') {
-            $GetGuestUsers.Uri = $GuestUsersResult.'@odata.nextLink'
-            $GuestUsersResult = Invoke-RestMethod @GetGuestUsers
-            $GuestUsers.AddRange($GuestUsersResult.value)
-        }
-        #endregion Get all Azure AD Guest Accounts
-
-        #Loop through each role, get members, and check if they are a guest user
-        foreach ($role in $DirectoryRoles) {
-            $GetRoleMembers = @{
-                Method = 'GET'
-                Uri = "https://graph.microsoft.com/v1.0/directoryRoles/roleTemplateId=$($role.roleTemplateId)/members"
-                ContentType = 'application/json'
-                Headers = @{
-                    Authorization = "Bearer $GraphToken"
-                }
-            }
-
+        # The 'nextLink' property will keep being returned if there's another page
+        While ($null -ne $RoleMembersResult.'@odata.nextLink') {
+            $GetRoleMembers.Uri = $RoleMembersResult.'@odata.nextLink'
             $RoleMembersResult = Invoke-RestMethod @GetRoleMembers
-
-            $RoleMembers = [System.Collections.ArrayList]@()
             $RoleMembers.AddRange($RoleMembersResult.value)
+        }
 
-            # The 'nextLink' property will keep being returned if there's another page
-            While ($null -ne $RoleMembersResult.'@odata.nextLink') {
-                $GetRoleMembers.Uri = $RoleMembersResult.'@odata.nextLink'
-                $RoleMembersResult = Invoke-RestMethod @GetRoleMembers
-                $RoleMembers.AddRange($RoleMembersResult.value)
-            }
-
-            foreach ($member in $RoleMembers) {
-                if ($GuestUsers.UserPrincipalName -contains $member.UserPrincipalName) {
-                    $null = $OutputObjects.Add(([PSCustomObject][Ordered] @{
-                        UserPrincipalName = $member.userPrincipalName
-                        RoleName = $role.displayName
-                    }))
-                }
+        foreach ($member in $RoleMembers) {
+            if ($GuestUsers.UserPrincipalName -contains $member.UserPrincipalName) {
+                $null = $OutputObjects.Add(([PSCustomObject][Ordered] @{
+                    UserPrincipalName = $member.userPrincipalName
+                    RoleName = $role.displayName
+                }))
             }
         }
     }
+}
 
-    if ($OutputObjects.count -gt 0) {
-        $Output.Result.Score       = 0
-        $Output.Result.Data        = $OutputObjects
-        $Output.Result.Message     = $Output.ResultMessage.Replace('{COUNT}',$outputObjects.count)
-        $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = 'Fail'
-    } else {
-        $Output.Result.Score       = 100
-        $Output.Result.Message     = "No evidence of exposure"
-        $Output.Result.Remediation = "None"
-        $Output.Result.Status      = "Pass"
-    }
+if ($OutputObjects.count -gt 0) {
+    $Output.Result.Score       = 0
+    $Output.Result.Data        = $OutputObjects
+    $Output.Result.Message     = $Output.ResultMessage.Replace('{COUNT}',$outputObjects.count)
+    $Output.Result.Remediation = $Output.Remediation
+    $Output.Result.Status      = 'Fail'
+} else {
+    $Output.Result.Score       = 100
+    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Remediation = "None"
+    $Output.Result.Status      = "Pass"
 }
-catch {
-    $_ | Write-Error
-}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0009'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 1
     Title                  = 'Security defaults not enabled'
     ScriptName             = 'CR0009-CheckSecurityDefaults'
@@ -81,82 +88,79 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
+<#
+    Security defaults and conditional access policies are mutually exclusive
+    In this indicator, we check:
+    Are there any enabled Conditional Access Policies?
+    - If YES, do nothing
+    - If NO, check to see if Security Defaults are enabled
+    - If YES, indicator passes
+    - If NO, indicator fails
+#>
+$GetConditionalPolicies = @{
+    Method = 'GET'
+    Uri = 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies'
+    ContentType = 'application/json'
+    Headers = @{
+        Authorization = "Bearer $GraphToken"
+    }
+}
+
 try {
-    <#
-        Security defaults and conditional access policies are mutually exclusive
-        In this indicator, we check:
-        Are there any enabled Conditional Access Policies?
-        - If YES, do nothing
-        - If NO, check to see if Security Defaults are enabled
-        - If YES, indicator passes
-        - If NO, indicator fails
-    #>
-    $GetConditionalPolicies = @{
+    $ConditionalAccessResult = Invoke-RestMethod @GetConditionalPolicies
+}
+catch {
+    $_ | Write-Error
+    Continue
+}
+
+$ConditionalAccessPolicies = [System.Collections.ArrayList]@()
+$ConditionalAccessPolicies += $ConditionalAccessResult.value | Where-Object -FilterScript {$_.state -eq 'enabled'}
+
+#The 'nextLink' property will keep being returned if there's another page
+While ($null -ne $ConditionalAccessResult.'@odata.nextLink') {
+    $GetConditionalPolicies.Uri = $ConditionalAccessResult.'@odata.nextLink'
+    $ConditionalAccessResult = Invoke-RestMethod @GetConditionalPolicies
+    $ConditionalAccessPolicies += $ConditionalAccessResult.value | Where-Object -FilterScript {$_.state -eq 'enabled'}
+}
+
+if ($ConditionalAccessPolicies.Count -eq 0) {
+    $SecurityDefaultEnabled = $false
+
+    # There are ZERO enabled conditional access policies
+    # Check if Security Defaults are enabled
+    $GetSecurityDefaults = @{
         Method = 'GET'
-        Uri = 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies'
+        Uri = 'https://graph.microsoft.com/v1.0/policies/identitySecurityDefaultsEnforcementPolicy'
         ContentType = 'application/json'
         Headers = @{
             Authorization = "Bearer $GraphToken"
         }
     }
 
-    try {
-        $ConditionalAccessResult = Invoke-RestMethod @GetConditionalPolicies
-    }
-    catch {
-        $_ | Write-Error
-        Continue
-    }
+    $SecurityDefaultsResult = Invoke-RestMethod @GetSecurityDefaults
 
-    $ConditionalAccessPolicies = [System.Collections.ArrayList]@()
-    $ConditionalAccessPolicies += $ConditionalAccessResult.value | Where-Object -FilterScript {$_.state -eq 'enabled'}
-
-    #The 'nextLink' property will keep being returned if there's another page
-    While ($null -ne $ConditionalAccessResult.'@odata.nextLink') {
-        $GetConditionalPolicies.Uri = $ConditionalAccessResult.'@odata.nextLink'
-        $ConditionalAccessResult = Invoke-RestMethod @GetConditionalPolicies
-        $ConditionalAccessPolicies += $ConditionalAccessResult.value | Where-Object -FilterScript {$_.state -eq 'enabled'}
-    }
-
-    if ($ConditionalAccessPolicies.Count -eq 0) {
-        $SecurityDefaultEnabled = $false
-
-        # There are ZERO enabled conditional access policies
-        # Check if Security Defaults are enabled
-        $GetSecurityDefaults = @{
-            Method = 'GET'
-            Uri = 'https://graph.microsoft.com/v1.0/policies/identitySecurityDefaultsEnforcementPolicy'
-            ContentType = 'application/json'
-            Headers = @{
-                Authorization = "Bearer $GraphToken"
-            }
-        }
-
-        $SecurityDefaultsResult = Invoke-RestMethod @GetSecurityDefaults
-
-        if ($SecurityDefaultsResult.isEnabled -eq $true) {
-            $SecurityDefaultEnabled = $true
-        }
-    } else {
+    if ($SecurityDefaultsResult.isEnabled -eq $true) {
         $SecurityDefaultEnabled = $true
     }
+} else {
+    $SecurityDefaultEnabled = $true
+}
 
-    if ($SecurityDefaultEnabled -eq $false) {
-        $Output.Result.Score       = 0
-        $Output.Result.Message     = $Output.ResultMessage
-        $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = 'Fail'
-    } else {
-        $Output.Result.Score       = 100
-        $Output.Result.Message     = 'No evidence of exposure'
-        $Output.Result.Remediation = 'None'
-        $Output.Result.Status      = 'Pass'
-        $Output.Result.Data        = $ConditionalAccessPolicies
-    }
+if ($SecurityDefaultEnabled -eq $false) {
+    $Output.Result.Score       = 0
+    $Output.Result.Message     = $Output.ResultMessage
+    $Output.Result.Remediation = $Output.Remediation
+    $Output.Result.Status      = 'Fail'
+} else {
+    $Output.Result.Score       = 100
+    $Output.Result.Message     = 'No evidence of exposure'
+    $Output.Result.Remediation = 'None'
+    $Output.Result.Status      = 'Pass'
+    $Output.Result.Data        = $ConditionalAccessPolicies
 }
-catch {
-    $_ | Write-Error
-}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

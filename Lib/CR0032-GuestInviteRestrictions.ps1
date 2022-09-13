@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0032'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 1
     Title                  = 'User cannot invite Guest'
     ScriptName             = 'CR0032-GuestInviteRestrictions'
@@ -85,54 +92,51 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
+$GetAuthorizationPolicy = @{
+    Method      = 'GET'
+    Uri         = 'https://graph.microsoft.com/beta/policies/authorizationPolicy/authorizationPolicy'
+    ContentType = 'application/json'
+    Headers     = @{
+        Authorization = "Bearer $GraphToken"
+    }
+}
+
 try {
-    $GetAuthorizationPolicy = @{
-        Method      = 'GET'
-        Uri         = 'https://graph.microsoft.com/beta/policies/authorizationPolicy/authorizationPolicy'
-        ContentType = 'application/json'
-        Headers     = @{
-            Authorization = "Bearer $GraphToken"
-        }
-    }
-
-    try {
-        $AuthorizationPolicy = Invoke-RestMethod @GetAuthorizationPolicy
-    }
-    catch {
-        $_ | Write-Error
-    }
-
-    switch ($AuthorizationPolicy.allowInvitesFrom) {
-        'none'	{
-            $Output.Result.Score       = 100
-            $Output.Result.Status      = 'Pass'
-            $Output.Result.Message     = 'No evidence of exposure. Prevent everyone, including admins, from inviting external users. Default setting for US Government.'
-            $Output.Result.Remediation = 'None'
-        }
-        'adminsAndGuestInviters' {
-            $Output.Result.Score       = 100
-            $Output.Result.Status      = 'Pass'
-            $Output.Result.Message     = 'No evidence of exposure. Allow members of Global Administrators, User Administrators, and Guest Inviter roles to invite external users.'
-            $Output.Result.Remediation = 'None'
-            
-        }
-        'adminsGuestInvitersAndAllMembers' {
-            $Output.Result.Score       = 100
-            $Output.Result.Status      = 'Pass'
-            $Output.Result.Message     = 'No evidence of exposure. Allow the above admin roles and all other User role members to invite external users.'
-            $Output.Result.Remediation = 'None'
-        }
-        'everyone' {
-            $Output.Result.Score       = 0
-            $Output.Result.Status      = 'Fail'
-            $Output.Result.Message     = $Output.ResultMessage
-            $Output.Result.Remediation = $Output.Remediation
-        }
-    }
+    $AuthorizationPolicy = Invoke-RestMethod @GetAuthorizationPolicy
 }
 catch {
     $_ | Write-Error
 }
+
+switch ($AuthorizationPolicy.allowInvitesFrom) {
+    'none'	{
+        $Output.Result.Score       = 100
+        $Output.Result.Status      = 'Pass'
+        $Output.Result.Message     = 'No evidence of exposure. Prevent everyone, including admins, from inviting external users. Default setting for US Government.'
+        $Output.Result.Remediation = 'None'
+    }
+    'adminsAndGuestInviters' {
+        $Output.Result.Score       = 100
+        $Output.Result.Status      = 'Pass'
+        $Output.Result.Message     = 'No evidence of exposure. Allow members of Global Administrators, User Administrators, and Guest Inviter roles to invite external users.'
+        $Output.Result.Remediation = 'None'
+        
+    }
+    'adminsGuestInvitersAndAllMembers' {
+        $Output.Result.Score       = 100
+        $Output.Result.Status      = 'Pass'
+        $Output.Result.Message     = 'No evidence of exposure. Allow the above admin roles and all other User role members to invite external users.'
+        $Output.Result.Remediation = 'None'
+    }
+    'everyone' {
+        $Output.Result.Score       = 0
+        $Output.Result.Status      = 'Fail'
+        $Output.Result.Message     = $Output.ResultMessage
+        $Output.Result.Remediation = $Output.Remediation
+    }
+}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

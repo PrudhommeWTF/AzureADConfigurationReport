@@ -28,15 +28,21 @@ Param(
 )
 
 #region Init
-$Start  = Get-Date
 $Output = @{
-    ID         = 'TI0002'
+    ID         = 'TI0004'
     Version    = [Version]'1.0.0.0'
-    ScriptName = 'TI0002-UserAnalysis'
-    Result     = @{
-        Repartition   = ''
-        AnalysisTable = ''
-    }
+    ScriptName = 'TI0004-ExternalTenantUsage'
+    Result     = ''
+}
+
+Function Get-TenantOpenIDConfigInfo {
+    Param(
+        [Parameter(
+            Mandatory = $true
+        )]
+        [String]$TenantName
+    )
+    Invoke-RestMethod -Uri "https://login.microsoftonline.com/$TenantName/v2.0/.well-known/openid-configuration"
 }
 #endregion Init
 
@@ -63,49 +69,47 @@ catch {
 
 #region Main
 #region Get all Azure AD Guest Accounts
-$PropertiesToLoad = @(
-    'id'
-    'userType'
-    'onPremisesSyncEnabled'
-    'passwordPolicies'
-    'passwordProfile'
-)
-$GetUsers = @{
-    Method      = 'GET'
-    Uri         = 'https://graph.microsoft.com/v1.0/users?$select={0}' -f ($PropertiesToLoad -join ',')
+$AADFilter        = "userType eq 'Guest'"
+$PropertiesToLoad = @('mail','userPrincipalName','creationType')
+$GetGuestUsers = @{
+    Method = 'GET'
+    Uri = 'https://graph.microsoft.com/v1.0/users?$filter={0}&$select={1}' -f $AADFilter, ($PropertiesToLoad -join ',')
     ContentType = 'application/json'
-    Headers     = @{
+    Headers = @{
         Authorization = "Bearer $GraphToken"
     }
 }
 
 try {
-    $UsersResult = Invoke-RestMethod @GetUsers
+    $GuestUsersResult = Invoke-RestMethod @GetGuestUsers
 }
 catch {
     $_ | Write-Error
     Continue
 }
 
-$Users = @($UsersResult.value)
+$GuestUsers = @($GuestUsersResult.value)
 
 #The 'nextLink' property will keep being returned if there's another page
-While ($null -ne $UsersResult.'@odata.nextLink') {
-    $GetUsers.Uri = $UsersResult.'@odata.nextLink'
-    $UsersResult = Invoke-RestMethod @GetUsers
-    $Users += $UsersResult.value
+While ($null -ne $GuestUsersResult.'@odata.nextLink') {
+    $GetGuestUsers.Uri = $GuestUsersResult.'@odata.nextLink'
+    $GuestUsersResult = Invoke-RestMethod @GetGuestUsers
+    $GuestUsers += $GuestUsersResult.value
 }
 #endregion Get all Azure AD Guest Accounts
 
-$Output.Result.Repartition = $Users | Group-Object -Property userType | Select-Object -Property Name,Count
-$Output.Result.AnalysisTable = @{
-    AccountsCount       = $Users.Count
-    GuestAccounts       = ($Users | Where-Object -FilterScript {$_.userType -eq 'Guest'} | Measure-Object).Count
-    MemberAccounts      = ($Users | Where-Object -FilterScript {$_.userType -eq 'Member'} | Measure-Object).Count
-    SyncedMembers       = ($Users | Where-Object -FilterScript {$_.userType -eq 'Member' -and $_.onPremisesSyncEnabled -eq $true} | Measure-Object).Count
-    CloudMembers        = ($Users | Where-Object -FilterScript {$_.userType -eq 'Member' -and $_.onPremisesSyncEnabled -ne $true} | Measure-Object).Count
-    CloudPwdNeverExpire = ($Users | Where-Object -FilterScript {$_.onPremisesSyncEnabled -ne $true -and $_.passwordPolicies -eq 'DisablePasswordExpiration'} | Measure-Object).Count
-}
+$Output.Result = $GuestUsers | ForEach-Object -Process {
+    $DomainName = $_.mail.split('@')[1]
+    try {
+        $TenantInfos = Get-TenantOpenIDConfigurationInfo -TenantName $DomainName
+        [PSCustomObject]@{
+            TenantId   = $TenantInfos.authorization_endpoint.split('/')[3]
+            Region     = $TenantInfos.tenant_region_scope
+            DomainName = $DomainName
+        }
+    }
+    catch {}
+} | Group-Object -Property TenantId
 #endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))

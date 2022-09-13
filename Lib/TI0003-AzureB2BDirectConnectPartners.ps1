@@ -31,27 +31,10 @@ Param(
 $Start = Get-Date
 $MSGraphAPIUri = 'https://graph.microsoft.com/v1.0'
 $Output = @{
-    ID         = 'TI0001'
+    ID         = 'TI0003'
     Version    = [Version]'1.0.0.0'
-    ScriptName = 'TI0001-TenantBasicInfo'
-    Result     = @{
-        Organization = ''
-        OIDConfig    = ''
-        Domains      = ''
-        OrgBranding  = ''
-        Timespan     = ''
-        GraphAPI     = ''
-    }
-}
-
-Function Get-TenantOpenIDConfigInfo {
-    Param(
-        [Parameter(
-            Mandatory = $true
-        )]
-        [String]$TenantName
-    )
-    Invoke-RestMethod -Uri "https://login.microsoftonline.com/$TenantName/v2.0/.well-known/openid-configuration"
+    ScriptName = 'TI0003-AzureB2BDirectConnectPartners'
+    Result     = ''
 }
 #endregion Init
 
@@ -84,10 +67,7 @@ $Rest101 = @{
         Authorization = "Bearer $GraphToken"
     }
 }
-$Output.Result.Organization = (Invoke-RestMethod -Uri "$MSGraphAPIUri/organization" @Rest101).Value
-$Output.Result.OIDConfig    = (Get-TenantOpenIDConfigurationInfo -TenantName $($Output.Result.Organization.verifiedDomains | Where-Object -FilterScript {$_.IsInitial -eq $true} | Select-Object -ExpandProperty Name))
-$Output.Result.Branding     = Invoke-RestMethod -Uri "$MSGraphAPIUri/organization/$($Output.Result.Organization.id)/branding" @Rest101
-$Output.Result.Timespan     = [String](New-TimeSpan -Start $Start -End (Get-Date))
+$Output.Result = (Invoke-RestMethod -Uri "$MSGraphAPIUri/policies/crossTenantAccessPolicy/partners" @Rest101).Value
 #endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))

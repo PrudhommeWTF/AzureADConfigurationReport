@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0002'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 3
     Title                  = 'Users with privileges in AD and AAD'
     ScriptName             = 'CR0002-UsersWithPrivilegesInADAndAAD'
@@ -82,6 +89,7 @@ $OutputObjects = [System.Collections.ArrayList]@()
 $MatchesFound = 0
 #endregion Init
 
+#region Main
 if ((Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain -eq $true) {
     #region GraphAPI Connection
     try {
@@ -295,6 +303,7 @@ if ((Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain -eq $true) {
 } else {
     $Output.Result.Data = 'Script started from a computer outside of Active Directory Domain Service.'
 }
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

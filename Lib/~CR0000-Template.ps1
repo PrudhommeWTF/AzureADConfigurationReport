@@ -30,7 +30,7 @@ Param(
 #region Init
 $Start  = Get-Date
 $Output = @{
-    ID                     = 'CR0023'
+    ID                     = 'CR0000'
     ChangeLog              = @(
         [PSCustomObject]@{
             Version   = [Version]'1.0.0.0'
@@ -39,20 +39,20 @@ $Output = @{
             Author    = "Thomas Prud'homme"
         }
     )
-    CategoryId             = 4
-    Title                  = 'Check Domain Federation Settings'
-    ScriptName             = 'CR0023-DomainFederationSettings'
-    Description            = 'Attacker changed domain federation trust settings using Azure AD administrative permissions to configure the domain to accept authorization tokens signed by their own SAML signing certificate.'
-    Weight                 = 0
-    Severity               = 'Informational'
-    LikelihoodOfCompromise = "Domain federation configuration being compromised can result in users beeing forwarded to attackers' IDP."
+    CategoryId             = 0
+    Title                  = ''
+    ScriptName             = 'CR0000-Template'
+    Description            = ''
+    Weight                 = 0 #0 to 7. 0 being informational and 7 being critical
+    Severity               = '' #Informational, Warning or Critical
+    LikelihoodOfCompromise = ''
     ResultMessage          = ''
-    Remediation            = 'Review and correct eventual glich or changes in the Federation Settings'
-    Permissions            = @('Domain.Read.All')
+    Remediation            = ''
+    Permissions            = @()
     SecurityFrameworks = @(
         @{
-            Name = 'MITRE ATT&CK'
-            Tags = @('Defense Evasion')
+            Name = ''
+            Tags = @()
         }
     )
     Result                 = @{
@@ -89,31 +89,8 @@ catch {
 #endregion GraphAPI Connection
 
 #region Main
-$BaseUri = 'https://graph.microsoft.com/v1.0'
-$Rest101 = @{
-    Method = 'GET'
-    ContentType = 'application/json'
-    Headers = @{
-        Authorization = "Bearer $GraphToken"
-    }
-}
 
-try {
-    $DomainFederationConfig = (Invoke-RestMethod @Rest101 -Uri ('{0}/domains' -f $BaseUri)).Value | Where-Object -FilterScript {$_.authenticationType -ne 'Managed'} | ForEach-Object -Process {
-        Invoke-RestMethod @Rest101 -Uri ('{0}/domains/{1}/federationConfiguration' -f $BaseUri, $_.id) | Select-Object -ExpandProperty Value
-    }
-
-}
-catch {
-    $_ | Write-Error
-}
-
-$Output.Result.Score       = 100
-$Output.Result.Status      = 'Pass'
-$Output.Result.Message     = 'No evidence of exposure'
-$Output.Result.Remediation = 'None'
-$Output.Result.Data        = $DomainFederationConfig
-#region Main
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

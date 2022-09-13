@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0004'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 3
     Title                  = 'Administrative units are not being used'
     ScriptName             = 'CR0004-UseOfAdministrativeUnits'
@@ -81,49 +88,46 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
 try {
-    try {
-        $GetAdministrativeUnits = @{
-            Method = 'GET'
-            Uri = 'https://graph.microsoft.com/v1.0/directory/administrativeUnits'
-            ContentType = 'application/json'
-            Headers = @{
-                Authorization = "Bearer $GraphToken"
-            }
+    $GetAdministrativeUnits = @{
+        Method = 'GET'
+        Uri = 'https://graph.microsoft.com/v1.0/directory/administrativeUnits'
+        ContentType = 'application/json'
+        Headers = @{
+            Authorization = "Bearer $GraphToken"
         }
-        $AdministrativeUnitResult = Invoke-RestMethod @GetAdministrativeUnits
     }
-    catch {
-        $_ | Write-Error
-        Continue
-    }
-
-    $AdministrativeUnits = [System.Collections.ArrayList]@()
-    $AdministrativeUnits.AddRange($AdministrativeUnitResult.value)
-
-    # The 'nextLink' property will keep being returned if there's another page
-    While ($null -ne $AdministrativeUnitResult.'@odata.nextLink') {
-        $GetAdministrativeUnits.Uri = $AdministrativeUnitResult.'@odata.nextLink'
-        $AdministrativeUnitResult = Invoke-RestMethod @GetAdministrativeUnits
-        $AdministrativeUnits.AddRange($AdministrativeUnitResult.value)
-    }
-
-    if ($AdministrativeUnits.count -eq 0) {
-        $Output.Result.Score       = 0
-        $Output.Result.Message     = $Output.ResultMessage
-        $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status      = 'Fail'
-    } else {
-        $Output.Result.Score = 100
-        $Output.Result.Data        = $AdministrativeUnits
-        $Output.Result.Message     = "No evidence of exposure"
-        $Output.Result.Remediation = "None"
-        $Output.Result.Status      = "Pass"
-    }
+    $AdministrativeUnitResult = Invoke-RestMethod @GetAdministrativeUnits
 }
 catch {
     $_ | Write-Error
+    Continue
 }
+
+$AdministrativeUnits = [System.Collections.ArrayList]@()
+$AdministrativeUnits.AddRange($AdministrativeUnitResult.value)
+
+# The 'nextLink' property will keep being returned if there's another page
+While ($null -ne $AdministrativeUnitResult.'@odata.nextLink') {
+    $GetAdministrativeUnits.Uri = $AdministrativeUnitResult.'@odata.nextLink'
+    $AdministrativeUnitResult = Invoke-RestMethod @GetAdministrativeUnits
+    $AdministrativeUnits.AddRange($AdministrativeUnitResult.value)
+}
+
+if ($AdministrativeUnits.count -eq 0) {
+    $Output.Result.Score       = 0
+    $Output.Result.Message     = $Output.ResultMessage
+    $Output.Result.Remediation = $Output.Remediation
+    $Output.Result.Status      = 'Fail'
+} else {
+    $Output.Result.Score = 100
+    $Output.Result.Data        = $AdministrativeUnits
+    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Remediation = "None"
+    $Output.Result.Status      = "Pass"
+}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

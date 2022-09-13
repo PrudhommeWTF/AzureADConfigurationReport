@@ -31,7 +31,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0007'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 5
     Title                  = 'MFA not configured for privileged accounts'
     ScriptName             = 'CR0007-PrivilegedAccountsMFA'
@@ -99,118 +106,115 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
+$GetDirectoryRoles = @{
+    Method = 'GET'
+    Uri = 'https://graph.microsoft.com/v1.0/directoryRoles'
+    ContentType = 'application/json'
+    Headers = @{
+        Authorization = "Bearer $GraphToken"
+    }
+}
 try {
-    $GetDirectoryRoles = @{
+    $DirectoryRolesResult = Invoke-RestMethod @GetDirectoryRoles
+}
+catch {
+    $_ | Write-Error
+    Continue
+}
+
+$DirectoryRoles = @()
+$DirectoryRoles += $DirectoryRolesResult.value | Where-Object -FilterScript {$_.roleTemplateId -in $AADRolesMapping.keys}
+
+#The 'nextLink' property will keep being returned if there's another page
+While ($null -ne $DirectoryRolesResult.'@odata.nextLink') {
+    $GetDirectoryRoles.Uri = $DirectoryRolesResult.'@odata.nextLink'
+    $DirectoryRolesResult = Invoke-RestMethod @GetDirectoryRoles
+    $DirectoryRoles += $DirectoryRolesResult.value | Where-Object -FilterScript {$_.roleTemplateId -in $AADRolesMapping.keys}
+}
+
+if ($DirectoryRoles) {
+    # NOTE:  The "BETA" endpoint will need to be updated to v1.0 at some point
+    $GetMFAReport = @{
         Method = 'GET'
-        Uri = 'https://graph.microsoft.com/v1.0/directoryRoles'
+        Uri = 'https://graph.microsoft.com/beta/reports/credentialUserRegistrationDetails'
         ContentType = 'application/json'
         Headers = @{
             Authorization = "Bearer $GraphToken"
         }
     }
     try {
-        $DirectoryRolesResult = Invoke-RestMethod @GetDirectoryRoles
+        $CheckMFAResult = Invoke-RestMethod @GetMFAReport
     }
     catch {
         $_ | Write-Error
         Continue
     }
 
-    $DirectoryRoles = @()
-    $DirectoryRoles += $DirectoryRolesResult.value | Where-Object -FilterScript {$_.roleTemplateId -in $AADRolesMapping.keys}
+    $UserMFAResults = @()
+    $UserMFAResults += $CheckMFAResult.value
 
     #The 'nextLink' property will keep being returned if there's another page
-    While ($null -ne $DirectoryRolesResult.'@odata.nextLink') {
-        $GetDirectoryRoles.Uri = $DirectoryRolesResult.'@odata.nextLink'
-        $DirectoryRolesResult = Invoke-RestMethod @GetDirectoryRoles
-        $DirectoryRoles += $DirectoryRolesResult.value | Where-Object -FilterScript {$_.roleTemplateId -in $AADRolesMapping.keys}
+    While ($null -ne $CheckMFAResult.'@odata.nextLink') {
+        $GetMFAReport.Uri = $CheckMFAResult.'@odata.nextLink'
+        $CheckMFAResult = Invoke-RestMethod @GetMFAReport
+        $UserMFAResults += $CheckMFAResult.value
     }
 
-    if ($DirectoryRoles) {
-        # NOTE:  The "BETA" endpoint will need to be updated to v1.0 at some point
-        $GetMFAReport = @{
+    #Loop through each role, get members, and check MFA registration status
+    foreach ($directoryRole in $DirectoryRoles) {
+        $GetRoleMember = @{
             Method = 'GET'
-            Uri = 'https://graph.microsoft.com/beta/reports/credentialUserRegistrationDetails'
+            Uri = "https://graph.microsoft.com/v1.0/directoryRoles/roleTemplateId=$($directoryRole.roleTemplateId)/members"
             ContentType = 'application/json'
             Headers = @{
                 Authorization = "Bearer $GraphToken"
             }
         }
-        try {
-            $CheckMFAResult = Invoke-RestMethod @GetMFAReport
-        }
-        catch {
-            $_ | Write-Error
-            Continue
-        }
 
-        $UserMFAResults = @()
-        $UserMFAResults += $CheckMFAResult.value
+        $RoleMembersResult = Invoke-RestMethod @getRoleMember
 
-        #The 'nextLink' property will keep being returned if there's another page
-        While ($null -ne $CheckMFAResult.'@odata.nextLink') {
-            $GetMFAReport.Uri = $CheckMFAResult.'@odata.nextLink'
-            $CheckMFAResult = Invoke-RestMethod @GetMFAReport
-            $UserMFAResults += $CheckMFAResult.value
-        }
+        $RoleMembers = @()
+        $RoleMembers += $RoleMembersResult.value
 
-        #Loop through each role, get members, and check MFA registration status
-        foreach ($directoryRole in $DirectoryRoles) {
-            $GetRoleMember = @{
-                Method = 'GET'
-                Uri = "https://graph.microsoft.com/v1.0/directoryRoles/roleTemplateId=$($directoryRole.roleTemplateId)/members"
-                ContentType = 'application/json'
-                Headers = @{
-                    Authorization = "Bearer $GraphToken"
-                }
-            }
-
-            $RoleMembersResult = Invoke-RestMethod @getRoleMember
-
-            $RoleMembers = @()
+        # The 'nextLink' property will keep being returned if there's another page
+        While ($null -ne $RoleMembersResult.'@odata.nextLink') {
+            $getRoleMember.Uri = $RoleMembersResult.'@odata.nextLink'
+            $RoleMembersResult = Invoke-RestMethod @GetRoleMember
             $RoleMembers += $RoleMembersResult.value
+        }
 
-            # The 'nextLink' property will keep being returned if there's another page
-            While ($null -ne $RoleMembersResult.'@odata.nextLink') {
-                $getRoleMember.Uri = $RoleMembersResult.'@odata.nextLink'
-                $RoleMembersResult = Invoke-RestMethod @GetRoleMember
-                $RoleMembers += $RoleMembersResult.value
-            }
+        foreach ($member in $RoleMembers) {
+            $ThisUserMFA = $userMFAResults | Where-Object -FilterScript {$_.userPrincipalName -eq $roleMember.userPrincipalName}
 
-            foreach ($member in $RoleMembers) {
-                $ThisUserMFA = $userMFAResults | Where-Object -FilterScript {$_.userPrincipalName -eq $roleMember.userPrincipalName}
-
-                If ($ThisUserMFA.isMfaRegistered -eq $false) {
-                    $ThisOutput = [PSCustomObject][Ordered] @{
-                        UserName = $roleMember.userPrincipalName
-                        MFARegistered = $thisUserMFA.isMfaRegistered
-                    }
-
-                    $null = $OutputObjects.Add($ThisOutput)
+            If ($ThisUserMFA.isMfaRegistered -eq $false) {
+                $ThisOutput = [PSCustomObject][Ordered] @{
+                    UserName = $roleMember.userPrincipalName
+                    MFARegistered = $thisUserMFA.isMfaRegistered
                 }
+
+                $null = $OutputObjects.Add($ThisOutput)
             }
         }
     }
-
-    $UniqueOutputObjects = @()
-    $UniqueOutputObjects += $OutputObjects | Sort-Object -Property UserName -Unique
-
-    if ($UniqueOutputObjects.count -eq 0) {
-        $Output.Result.Score         = 0
-        $Output.Result.Data          = $UniqueOutputObjects
-        $Output.Result.Message       = $Output.ResultMessage.Replace('{COUNT}',$uniqueOutputObjects.count)
-        $Output.Result.Remediation   = $Output.Remediation
-        $Output.Result.Status        = 'Fail'
-    } else {
-        $Output.Result.Score         = 100
-        $Output.Result.Message       = "No evidence of exposure"
-        $Output.Result.Remediation   = "None"
-        $Output.Result.Status        = "Pass"
-    }
 }
-catch {
-    $_ | Write-Error
+
+$UniqueOutputObjects = @()
+$UniqueOutputObjects += $OutputObjects | Sort-Object -Property UserName -Unique
+
+if ($UniqueOutputObjects.count -eq 0) {
+    $Output.Result.Score         = 0
+    $Output.Result.Data          = $UniqueOutputObjects
+    $Output.Result.Message       = $Output.ResultMessage.Replace('{COUNT}',$uniqueOutputObjects.count)
+    $Output.Result.Remediation   = $Output.Remediation
+    $Output.Result.Status        = 'Fail'
+} else {
+    $Output.Result.Score         = 100
+    $Output.Result.Message       = "No evidence of exposure"
+    $Output.Result.Remediation   = "None"
+    $Output.Result.Status        = "Pass"
 }
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output

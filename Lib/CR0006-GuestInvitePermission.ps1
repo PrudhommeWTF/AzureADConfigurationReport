@@ -31,7 +31,14 @@ Param(
 $Start = Get-Date
 $Output = @{
     ID                     = 'CR0006'
-    Version                = [Version]'1.0.0.0'
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = [DateTime]'09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+    )
     CategoryId             = 1
     Title                  = 'Check for guests having permission to invite other guests'
     ScriptName             = 'CR0006-GuestInvitePermission'
@@ -81,34 +88,31 @@ catch {
 }
 #endregion GraphAPI Connection
 
+#region Main
+# Get Authorization Policy
 try {
-    # Get Authorization Policy
-    try {
-        $authorizationPolicyResult = Invoke-RestMethod -Method 'GET' -Uri 'https://graph.microsoft.com/v1.0/policies/authorizationPolicy' -ContentType 'application/json' -Headers @{
-            Authorization = "Bearer $GraphToken"
-        }
-    }
-    catch {
-        Write-Error $_
-        Continue
-    }
-
-    if ($authorizationPolicyResult.allowInvitesFrom -eq "everyone") {
-        $Output.Result.Score = 0
-        $Output.Result.Message = $Output.ResultMessage
-        $Output.Result.Remediation = $Output.Remediation
-        $Output.Result.Status = 'Fail'
-    }
-    else {
-        $Output.Result.Score = 100
-        $Output.Result.Message = "No evidence of exposure"
-        $Output.Result.Remediation = "None"
-        $Output.Result.Status = "Pass"
+    $authorizationPolicyResult = Invoke-RestMethod -Method 'GET' -Uri 'https://graph.microsoft.com/v1.0/policies/authorizationPolicy' -ContentType 'application/json' -Headers @{
+        Authorization = "Bearer $GraphToken"
     }
 }
 catch {
     Write-Error $_
+    Continue
 }
+
+if ($authorizationPolicyResult.allowInvitesFrom -eq "everyone") {
+    $Output.Result.Score = 0
+    $Output.Result.Message = $Output.ResultMessage
+    $Output.Result.Remediation = $Output.Remediation
+    $Output.Result.Status = 'Fail'
+}
+else {
+    $Output.Result.Score = 100
+    $Output.Result.Message = "No evidence of exposure"
+    $Output.Result.Remediation = "None"
+    $Output.Result.Status = "Pass"
+}
+#endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))
 [PSCustomObject]$Output
