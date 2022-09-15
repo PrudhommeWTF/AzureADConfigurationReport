@@ -34,16 +34,6 @@ $Output = @{
     ScriptName = 'TI0004-ExternalTenantUsage'
     Result     = ''
 }
-
-Function Get-TenantOpenIDConfigInfo {
-    Param(
-        [Parameter(
-            Mandatory = $true
-        )]
-        [String]$TenantName
-    )
-    Invoke-RestMethod -Uri "https://login.microsoftonline.com/$TenantName/v2.0/.well-known/openid-configuration"
-}
 #endregion Init
 
 #region GraphAPI Connection
@@ -101,7 +91,7 @@ While ($null -ne $GuestUsersResult.'@odata.nextLink') {
 $Output.Result = $GuestUsers | ForEach-Object -Process {
     $DomainName = $_.mail.split('@')[1]
     try {
-        $TenantInfos = Get-TenantOpenIDConfigurationInfo -TenantName $DomainName
+        $TenantInfos = Get-TenantOpenIDConfigInfo -TenantName $DomainName
         [PSCustomObject]@{
             TenantId   = $TenantInfos.authorization_endpoint.split('/')[3]
             Region     = $TenantInfos.tenant_region_scope

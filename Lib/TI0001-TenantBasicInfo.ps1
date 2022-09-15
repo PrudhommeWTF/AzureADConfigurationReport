@@ -43,16 +43,6 @@ $Output = @{
         GraphAPI     = ''
     }
 }
-
-Function Get-TenantOpenIDConfigInfo {
-    Param(
-        [Parameter(
-            Mandatory = $true
-        )]
-        [String]$TenantName
-    )
-    Invoke-RestMethod -Uri "https://login.microsoftonline.com/$TenantName/v2.0/.well-known/openid-configuration"
-}
 #endregion Init
 
 #region GraphAPI Connection
@@ -85,7 +75,7 @@ $Rest101 = @{
     }
 }
 $Output.Result.Organization = (Invoke-RestMethod -Uri "$MSGraphAPIUri/organization" @Rest101).Value
-$Output.Result.OIDConfig    = (Get-TenantOpenIDConfigurationInfo -TenantName $($Output.Result.Organization.verifiedDomains | Where-Object -FilterScript {$_.IsInitial -eq $true} | Select-Object -ExpandProperty Name))
+$Output.Result.OIDConfig    = (Get-TenantOpenIDConfigInfo -TenantName $($Output.Result.Organization.verifiedDomains | Where-Object -FilterScript {$_.IsInitial -eq $true} | Select-Object -ExpandProperty Name))
 $Output.Result.Branding     = Invoke-RestMethod -Uri "$MSGraphAPIUri/organization/$($Output.Result.Organization.id)/branding" @Rest101
 $Output.Result.Timespan     = [String](New-TimeSpan -Start $Start -End (Get-Date))
 #endregion Main

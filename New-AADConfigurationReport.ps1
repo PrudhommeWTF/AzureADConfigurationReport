@@ -13,6 +13,15 @@ catch {
 }
 
 #Custom functions
+Function Get-TenantOpenIDConfigInfo {
+    Param(
+        [Parameter(
+            Mandatory = $true
+        )]
+        [String]$TenantName
+    )
+    Invoke-RestMethod -Uri "https://login.microsoftonline.com/$TenantName/v2.0/.well-known/openid-configuration"
+}
 Function New-PSHtmlBootstrapTable {
     <#
         .DESCRIPTION
@@ -82,14 +91,6 @@ Function New-PSHtmlBootstrapTable {
     New-PSHtmlTable -class 'table table-striped' -id $TableId
     New-PSHtmlScript -Content "`$('#$TableId').bootstrapTable($($BootstrapTable | ConvertTo-Json -Compress))"
 }
-Function New-RandomRGBA {
-    <#
-        .DESCRIPTION
-        Generate random RGBA color code
-    #>
-    $Random = [Drawing.Color]::FromArgb((Get-Random -Maximum 256),(Get-Random -Maximum  256),(Get-Random -Maximum  256),(Get-Random -Maximum  256))
-    'rgba({0}, {1}, {2}, {3})' -f $Random.R, $Random.G, $Random.B, $Random.A
-}
 Function New-PSHtmlChartJS {
     <#
         .DESCRIPTION
@@ -109,64 +110,110 @@ Function New-PSHtmlChartJS {
 
         .PARAMETER InputObject
         Data to use as input for the chart
+        .PARAMETER DatasetLabel
+        .PARAMETER HideLegend
+        .PARAMETER LineShowX
+        .PARAMETER LineShowY
+        .PARAMETER LineYMaxValue
     #>
     Param(
         $ChartId = 'myChart',
-        $ChartType,
-        $ArrayTitleProperty = 'Name',
-        $ArrayValueProperty = 'Count',
-        $InputObject
+        [ValidateSet('line','doughnut','pie')]
+        [String]$ChartType,
+
+        [String]$ArrayTitleProperty = 'Name',
+        [String]$ArrayValueProperty = 'Count',
+
+        $InputObject,
+        [String]$DatasetLabel,
+        [Switch]$HideLegend,
+
+        [Boolean]$LineShowX = $true,
+        [Boolean]$LineShowY = $true,
+        [Int]$LineYMaxValue = 100
     )
-
-    [Collections.ArrayList]$Labels = @()
-    [Collections.ArrayList]$Data = @()
-    [Collections.ArrayList]$ColorSet = @()
+    $PresetColors = @('#F34F1C', '#7FBC00', '#FFBA01', '#01A6F0', '#747474')
     [Collections.Hashtable]$Dataset = @{}
+    [Collections.Hashtable]$Options = @{
+        plugins = [Collections.Hashtable]@{}
+        scales  = [Collections.Hashtable]@{}
+    }
 
+    #region Data & Label format depending on InputObject type
+    $Values = @()
     if ($InputObject -is [Array]) {
+        $Labels = @()
         $InputObject | ForEach-Object -Process {
-            $null = $Labels.Add($_.$ArrayTitleProperty)
-            $null = $Data.Add($_.$ArrayValueProperty)
-            if ($ChartType -ne 'line') {
-                $null = $ColorSet.Add((New-RandomRGBA))
-            }
+            $Labels += $_.$ArrayTitleProperty
+            $Values += $_.$ArrayValueProperty
         }
     } elseif ($InputObject -is [Collections.ArrayList]) {
         $Labels = $InputObject.Keys
         $Labels | ForEach-Object -Process {
-            $null = $Data.Add($InputObject.$_)
-            if ($ChartType -ne 'line') {
-                $null = $ColorSet.Add((New-RandomRGBA))
-            }
+            $Values += $InputObject.$_
         }
     } else {
         $Labels = $InputObject | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name
-        [Collections.ArrayList]$Data = @()
         foreach ($label in $Labels) {
-            $null = $Data.Add($InputObject.$label)
-            if ($ChartType -ne 'line') {
-                $null = $ColorSet.Add((New-RandomRGBA))
-            }
+            $Values += $InputObject.$label
         }
     }
-    $Dataset.Add('data', $Data)
-    if ($ChartType -ne 'line') {
-        $Dataset.Add('backgroundColor', $ColorSet)
-    } else {
-        $Dataset.Add('borderColor', 'rgba(13,110,253)')
-    }
-    [Collections.Hashtable]$Config = @{
-        type = $ChartType
-        data = [Collections.Hashtable]@{
-            labels = $Labels
-            datasets = @($Dataset)
+    #endregion Data & Label format depending on InputObject type
+
+    $null = $Dataset.Add('label', $DatasetLabel)
+    $null = $Dataset.Add('data', $Values)
+
+    if ($ChartType -eq 'line') {
+        #region dataset options
+        $Dataset.Add('fill', $false)
+        $Dataset.Add('borderColor', '#0073aa')
+        $Dataset.Add('borderWidth', 3)
+        $Dataset.Add('tension', 0.1)
+        #endregion dataset options
+
+        #region x scale options
+        [Collections.Hashtable]$xOptions = @{}
+        if ($LineShowX -eq $false) {
+            $xOptions.Add('display', $false)
+        } else {
+            $xOptions.Add('display', $true)
         }
-        options = [Collections.Hashtable]@{}
+        #endregion x scale options
+
+        #region y scale options
+        [Collections.Hashtable]$yOptions = @{}
+        if ($LineShowY -eq $false) {
+            $yOptions.Add('display', $false)
+        } else {
+            $yOptions.Add('display', $true)
+        }
+        $yOptions.Add('max', $LineYMaxValue)
+        #endregion y scale options
+
+        $Options.scales.Add('x', $xOptions)
+        $Options.scales.Add('y', $yOptions)
+    } elseif ($ChartType -eq 'pie' -or $ChartType -eq 'doughnut') {
+        $Dataset.Add('backgroundColor', $PresetColors)
+        $Dataset.Add('hoverOffset', 4)
     }
 
+    if ($HideLegend) {
+        $null = $Options.plugins.Add('legend', (@{
+            display = $false
+        }))
+    }
+
+    #Output
     New-PSHtmlDiv -Content {
         New-PSHtmlCanvas -id $ChartId 
-        New-PSHtmlScript -Content "const $ChartId = new Chart(document.getElementById('$ChartId'), $($Config | ConvertTo-Json -Depth 99 -Compress));"
+        New-PSHtmlScript -Content "const $ChartId = new Chart(document.getElementById('$ChartId'), $(@{
+            type    = $ChartType
+            data    = @{
+                labels   = $Labels
+                datasets = @($Dataset)
+            }
+            options = $Options
+        } | ConvertTo-Json -Depth 99 -Compress));"
     }
 }
 Function Invoke-ParallelRunSpace{
@@ -755,7 +802,7 @@ $InitialDomain    = $TenantInfoBasics.Organization.verifiedDomains | Where-Objec
 $BaseOutputFilePath = '{0}\Output\{1}-{2:yyyyMMdd_HHmm}' -f $PSScriptRoot, $InitialDomain, $Start
 
 #Gathering reports indicator history (Xml files)
-$IndicatorsHistory = Get-ChildItem -Path "$PSScriptRoot\Output\" -Filter "$InitialDomain-*.xml" | ForEach-Object -Process {
+$IndicatorsHistory = Get-ChildItem -Path "$PSScriptRoot\Output\" -Filter "$InitialDomain-*.xml" | Sort-Object -Property CreationTime -Descending | Select-Object -First 5 | ForEach-Object -Process {
     $StrDate = $_.BaseName.Split('-')[1]
     $Data = Import-Clixml -Path $_.FullName
     $Date = Get-Date -Year $StrDate.Substring(0,4) -Month $StrDate.Substring(4,2) -Day $StrDate.Substring(6,2) -Hour $StrDate.Substring(9,2) -Minute $StrDate.Substring(11,2) -Second 00
@@ -763,7 +810,7 @@ $IndicatorsHistory = Get-ChildItem -Path "$PSScriptRoot\Output\" -Filter "$Initi
         @{
             Name  = $_.Name
             Score = $_.Score
-            Date  = $Date
+            Date  = $Date.ToString('MM/dd/yy')
         }
     }
 }
@@ -1109,7 +1156,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                 } -Content {
                                     New-PSHtmlDiv -class 'container-fluid' -Content {
                                         New-PSHtmlP -Content ''
-                                        New-PSHtmlBootstrapTable -TableId 'ExternalTenantUsageDetails' -Data $($ExternalTenants | ForEach-Object -Process {
+                                        New-PSHtmlBootstrapTable -TableId 'ExternalTenantUsageDetails' -Searchable -Paged -Sortable -Data $($ExternalTenants | ForEach-Object -Process {
                                             $DNSDomains = $_.Group.DomainName | Group-Object | Sort-Object -Property Count -Descending
                                             if ($_.Name -eq '9cd80435-793b-4f48-844b-6b3f37d1c1f3') {
                                                 $TenantName = 'Personal Email Addresses'
@@ -1144,7 +1191,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                 field = 'DomainNames'
                                                 title = 'Domain Names usage'
                                             }
-                                        ) -Searchable -Paged -Sortable
+                                        )
                                     }
                                 }
                             }
@@ -1249,6 +1296,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                             New-PSHTmldiv -class "card-body row text-$Level" -Content {
                                                 New-PSHtmlDiv -class 'col-8' -Content {
                                                     New-PSHTmlh5 -class 'card-title' -Content $category.Name
+                                                    New-PSHtmlChartJS -ChartId "$($category.Name -replace ' ','')History" -ChartType 'line' -ArrayTitleProperty Date -ArrayValueProperty Score -InputObject $History -HideLegend -LineShowX $false -DatasetLabel $category.Name
                                                 }
                                                 New-PSHtmlDiv -class 'col-4 text-end' -style 'font-size: xxx-large;' -title $CategoryScore -Content {if ($null -ne $CategoryScore) {[Math]::Round($CategoryScore, 0)} else {0}}
                                             }
@@ -1429,7 +1477,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                                         'tabindex'        = 0
                                                                     } -Content {
                                                                         New-PSHtmlP -Content 'Script Change Log:'
-                                                                        New-PSHtmlBootstrapTable -TableId "$($entry.Id)ChangeLogTable" -Data $entry.ChangeLog -Searchable -Paged -Sortable -PropertiesMap @(
+                                                                        (New-PSHtmlBootstrapTable -TableId "$($entry.Id)ChangeLogTable" -Data $entry.ChangeLog -Searchable -Paged -Sortable -PropertiesMap @(
                                                                             @{
                                                                                 field = 'Version'
                                                                                 title = 'Version'
@@ -1443,7 +1491,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                                                 field = 'Author'
                                                                                 title = 'Author'
                                                                             }
-                                                                        )
+                                                                        ))# -replace '"\\/Date(','Date(' -replace ')\\/"',')'
                                                                     }
                                                                 }
                                                             }
@@ -1530,6 +1578,10 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                         New-PSHtmlH4 -Content 'Report Data'
                                                         New-PSHtmlP -Content 'Here is what has been found:'
                                                         New-PSHtmlBootstrapTable -TableId "$($entry.Id)table" -Data $entry.Result.Data -Searchable -Paged -Sortable
+                                                        #$HtmlOut = New-PSHtmlBootstrapTable -TableId "$($entry.Id)table" -Data $entry.Result.Data -Searchable -Paged -Sortable
+                                                        #if ($HtmlOut -match '"\\/Date(') {
+                                                        #    $HtmlOut -replace '"\\/Date(','Date(' -replace ')\\/"',')'
+                                                        #}
                                                     }
                                                 }
                                             }

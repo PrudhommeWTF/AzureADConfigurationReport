@@ -35,7 +35,7 @@ $Output = @{
         [PSCustomObject]@{
             Version   = [Version]'1.0.0.0'
             ChangeLog = 'Initial version'
-            Date      = [DateTime]'09/13/2022 21:30'
+            Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
     )
