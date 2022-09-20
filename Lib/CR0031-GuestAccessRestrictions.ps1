@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -36,6 +41,16 @@ $Output = @{
             Version   = [Version]'1.0.0.0'
             ChangeLog = 'Initial version'
             Date      = '09/13/2022 21:30'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
             Author    = "Thomas Prud'homme"
         }
     )
@@ -51,8 +66,7 @@ Limiting guest access ensures that guest accounts do not have permission for cer
 
 Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
 '@
-    Weight                 = 3 #0 to 7. 0 being informational and 7 being critical
-    Severity               = 'Warning' #Informational, Warning or Critical
+    Weight                 = 4
     LikelihoodOfCompromise = 'Guest may have access to User properties that you do not want to expose.'
     ResultMessage          = ''
     Remediation            = 'Navigate the following Azure AD Portal blade: Azure Active Directory > External Identities > External Collaboration Settings. Under "Guest user access", change the value of "Guest user access restrictions" to value "Guest user access is restricted to properties and memberships of their own directory objects"'
@@ -73,6 +87,11 @@ Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
         GraphAPI    = ''
     }
 }
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
+}
 #endregion Init
 
 #region GraphAPI Connection
@@ -92,6 +111,7 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection

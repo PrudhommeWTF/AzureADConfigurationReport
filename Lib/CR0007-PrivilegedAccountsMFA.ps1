@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,13 +43,24 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Reviewed Weight from 7 to 8
+Removed Severity
+Moved variable AADRolesMapping & OutputObjects to Main region instead of Init
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryId             = 5
     Title                  = 'MFA not configured for privileged accounts'
     ScriptName             = 'CR0007-PrivilegedAccountsMFA'
     Description            = 'This indicator checks that MFA (Multi-Factor Authentication) is enabled for users with administrative rights.'
-    Weight                 = 7
-    Severity               = 'Critical'
+    Weight                 = 8
     LikelihoodOfCompromise = 'Accounts having privileged access are more valuable targets to attackers. A compromise of a privileged user represents a significant risk. As a result, these accounts require extra protections.'
     ResultMessage          = '{COUNT} privileged user(s) found without MFA configured.'
     Remediation            = 'It is recommended to configure MFA for privileged user(s).'
@@ -65,24 +81,11 @@ $Output = @{
         GraphAPI    = ''
     }
 }
-$AADRolesMapping = @{
-    "62e90394-69f5-4237-9190-012177145e10" = "Global administrator"
-    "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3" = "Application administrator"
-    "c4e39bd9-1100-46d3-8c65-fb160da0071f" = "Authentication administrator"
-    "b0f54661-2d74-4c50-afa3-1ec803f12efe" = "Billing administrator"
-    "158c047a-c907-4556-b7ef-446551a6b5f7" = "Cloud application administrator"
-    "b1be1c3e-b65d-4f19-8427-f6fa0d97feb9" = "Conditional Access administrator"
-    "29232cdf-9323-42fd-ade2-1d097af3e4de" = "Exchange administrator"
-    "729827e3-9c14-49f7-bb1b-9608f156bbb8" = "Helpdesk administrator"
-    "966707d0-3269-4727-9be2-8c3a10f19b9d" = "Password administrator"
-    "7be44c8a-adaf-4e2a-84d6-ab2649e08a13" = "Privileged authentication administrator"
-    "194ae4cb-b126-40b2-bd5b-6091b380977d" = "Security administrator"
-    "f28a1f50-f6e7-4571-818b-6a12f2af6b6c" = "SharePoint administrator"
-    "fe930be7-5e62-47db-91af-98c3a49a38b1" = "User administrator"
-    "0526716b-113d-4c15-b2c8-68e3c22b9f80" = "Authentication Policy Administrator"
-    "be2f45a1-457d-42af-a067-6ec1fa63bc45" = "External Identity Provider Administrator"
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
 }
-$OutputObjects = [System.Collections.ArrayList]@()
 #endregion Init
 
 #region GraphAPI Connection
@@ -102,11 +105,30 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection
 
 #region Main
+$AADRolesMapping = @{
+    "62e90394-69f5-4237-9190-012177145e10" = "Global administrator"
+    "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3" = "Application administrator"
+    "c4e39bd9-1100-46d3-8c65-fb160da0071f" = "Authentication administrator"
+    "b0f54661-2d74-4c50-afa3-1ec803f12efe" = "Billing administrator"
+    "158c047a-c907-4556-b7ef-446551a6b5f7" = "Cloud application administrator"
+    "b1be1c3e-b65d-4f19-8427-f6fa0d97feb9" = "Conditional Access administrator"
+    "29232cdf-9323-42fd-ade2-1d097af3e4de" = "Exchange administrator"
+    "729827e3-9c14-49f7-bb1b-9608f156bbb8" = "Helpdesk administrator"
+    "966707d0-3269-4727-9be2-8c3a10f19b9d" = "Password administrator"
+    "7be44c8a-adaf-4e2a-84d6-ab2649e08a13" = "Privileged authentication administrator"
+    "194ae4cb-b126-40b2-bd5b-6091b380977d" = "Security administrator"
+    "f28a1f50-f6e7-4571-818b-6a12f2af6b6c" = "SharePoint administrator"
+    "fe930be7-5e62-47db-91af-98c3a49a38b1" = "User administrator"
+    "0526716b-113d-4c15-b2c8-68e3c22b9f80" = "Authentication Policy Administrator"
+    "be2f45a1-457d-42af-a067-6ec1fa63bc45" = "External Identity Provider Administrator"
+}
+$OutputObjects = [System.Collections.ArrayList]@()
 $GetDirectoryRoles = @{
     Method = 'GET'
     Uri = 'https://graph.microsoft.com/v1.0/directoryRoles'

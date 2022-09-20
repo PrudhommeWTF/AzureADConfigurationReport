@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,13 +43,25 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Weight reviewed from 7 to 8
+Removed Severity
+Moved variable AADRolesMapping in Main region instead of Init
+Added missing region to connect to GraphAPI in case of run without GraphAPIToken
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryId             = 3
     Title                  = 'Users with privileges in AD and AAD'
     ScriptName             = 'CR0002-UsersWithPrivilegesInADAndAAD'
     Description            = 'This indicator checks for AAD privileged users that are also privileged in on-premise AD.'
-    Weight                 = 7
-    Severity               = 'Critical'
+    Weight                 = 8
     LikelihoodOfCompromise = 'The compromise of an account that is privileged in both AD and AAD can result in both environments being compromised.'
     ResultMessage          = 'Found {COUNT} Privileged AAD users that are also privileged in AD'
     Remediation            = @'
@@ -68,6 +85,36 @@ Privileged in AAD > Make sure it is not a synced account, and not a continuous r
         GraphAPI    = ''
     }
 }
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
+}
+#endregion Init
+
+#region GraphAPI Connection
+try {
+    if ($PSCmdlet.ParameterSetName -eq 'Default') {
+        $GraphToken = Invoke-RestMethod -Method 'POST' -Uri "https://login.microsoftonline.com/$TenantId/oauth2/v2.0/token" -Body @{
+            client_id = $TenantAppId
+            client_secret = $TenantAppSecret
+            scope = 'https://graph.microsoft.com/.default'
+            grant_type = 'client_credentials'
+        } -ContentType 'application/x-www-form-urlencoded' | Select-Object -ExpandProperty 'access_token'
+    } else {
+        $GraphToken = $GraphAPIAccessToken
+    }
+    $Output.Result.GraphAPI = 'Success'
+}
+catch {
+    $_ | Write-Error
+    $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
+    exit
+}
+#endregion GraphAPI Connection
+
+#region Main
 $AADRolesMapping = @{
     "62e90394-69f5-4237-9190-012177145e10" = "Global administrator"
     "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3" = "Application administrator"
@@ -87,9 +134,6 @@ $AADRolesMapping = @{
 }
 $OutputObjects = [System.Collections.ArrayList]@()
 $MatchesFound = 0
-#endregion Init
-
-#region Main
 if ((Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain -eq $true) {
     #region GraphAPI Connection
     try {

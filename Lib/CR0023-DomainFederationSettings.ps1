@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,13 +43,22 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryId             = 4
     Title                  = 'Check Domain Federation Settings'
     ScriptName             = 'CR0023-DomainFederationSettings'
     Description            = 'Attacker changed domain federation trust settings using Azure AD administrative permissions to configure the domain to accept authorization tokens signed by their own SAML signing certificate.'
     Weight                 = 0
-    Severity               = 'Informational'
     LikelihoodOfCompromise = "Domain federation configuration being compromised can result in users beeing forwarded to attackers' IDP."
     ResultMessage          = ''
     Remediation            = 'Review and correct eventual glich or changes in the Federation Settings'
@@ -65,6 +79,11 @@ $Output = @{
         GraphAPI    = ''
     }
 }
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
+}
 #endregion Init
 
 #region GraphAPI Connection
@@ -84,6 +103,7 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection

@@ -486,22 +486,6 @@ Function Set-ConfigurationFile {
             #Exit script
             Exit
         }
-
-        #List all required permissions in Check Rules scripts
-        $ApplicationPermissions = @(
-            'RoleManagement.Read.Directory',
-            'PrivilegedAccess.Read.AzureAD',
-            'Directory.Read.All',
-            'RoleEligibilitySchedule.Read.Directory',
-            'AdministrativeUnit.Read.All',
-            'Policy.Read.All',
-            'Reports.Read.All',
-            'Application.Read.All',
-            'IdentityRiskEvent.Read.All',
-            'Domain.Read.All',
-            'Organization.Read.All',
-            'Domain.Read.All'
-        )
         
         #Get Service Principal of Microsoft Graph Resource API 
         $GraphSP = Get-AzureADServicePrincipal -All $true | Where-Object {$_.DisplayName -eq 'Microsoft Graph' -and $_.AppId -eq '00000003-0000-0000-c000-000000000000'}
@@ -512,14 +496,14 @@ Function Set-ConfigurationFile {
         $RequiredGraphAccess.ResourceAccess = New-Object -TypeName System.Collections.Generic.List[Microsoft.Open.AzureAD.Model.ResourceAccess]
 
         #Add app permissions
-        foreach ($permission in $ApplicationPermissions) {
+        foreach ($permission in (((Get-ChildItem -Path "$PSScriptRoot\lib" -Filter 'CR*-*.ps1') | ForEach-Object -Process {(& $_.FullName -ReturnScriptMetadata).Permissions} | Group-Object).Name)) {
             $RequiredPermission = $null
             #Get required app permission
             $RequiredPermission = $GraphSP.AppRoles | Where-Object -FilterScript {$_.Value -eq $permission}
             if ($RequiredPermission) {
                 $ResourceAccess = New-Object Microsoft.Open.AzureAD.Model.ResourceAccess
                 $ResourceAccess.Type = 'Role'
-                $ResourceAccess.Id   = $RequiredPermission.Id    
+                $ResourceAccess.Id   = $RequiredPermission.Id
                 #Add required app permission
                 $RequiredGraphAccess.ResourceAccess.Add($ResourceAccess)
             } else {
@@ -615,7 +599,7 @@ Function Set-ConfigurationFile {
 $Start = Get-Date
 
 #Title to be used all over the script (Host, WPF Gui or Html output)
-$global:ScriptTitle = 'Azure AD Configuration Report'
+$global:ScriptTitle = 'AzureAD Insight'
 
 Write-Output -InputObject ('{0} script started.' -f $global:ScriptTitle)
 
@@ -799,29 +783,29 @@ $TenantInfoBasics = ($Outputs | Where-Object -FilterScript {$_.Id -eq 'TI0001'})
 $InitialDomain    = $TenantInfoBasics.Organization.verifiedDomains | Where-Object -FilterScript {$_.IsInitial -eq $true} | Select-Object -ExpandProperty Name
 
 #Base Output file path
-$BaseOutputFilePath = '{0}\Output\{1}-{2:yyyyMMdd_HHmm}' -f $PSScriptRoot, $InitialDomain, $Start
+$BaseOutputFilePath = '{0}\Output\{1}' -f $PSScriptRoot, $InitialDomain
 
 #Gathering reports indicator history (Xml files)
 $IndicatorsHistory = Get-ChildItem -Path "$PSScriptRoot\Output\" -Filter "$InitialDomain-*.xml" | Sort-Object -Property CreationTime -Descending | Select-Object -First 5 | ForEach-Object -Process {
-    $StrDate = $_.BaseName.Split('-')[1]
     $Data = Import-Clixml -Path $_.FullName
-    $Date = Get-Date -Year $StrDate.Substring(0,4) -Month $StrDate.Substring(4,2) -Day $StrDate.Substring(6,2) -Hour $StrDate.Substring(9,2) -Minute $StrDate.Substring(11,2) -Second 00
     $Data.Indicators | ForEach-Object -Process {
         @{
             Name  = $_.Name
             Score = $_.Score
-            Date  = $Date.ToString('MM/dd/yy')
+            Date  = $Data.Date.ToString('MM/dd/yy')
         }
     }
 }
 #endregion Gathering Azure AD Data
 
 #region Generating HTML and XML Output File
+$Ico64 = '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'
 Write-Output -InputObject 'Start generating HTML content and file'
 New-PSHtmlHtml -lang 'en' -Content {
     New-PSHtmlHead -Content {
         New-PSHtmlMeta -charset 'utf-8'
         New-PSHtmlTitle -Content $global:ScriptTitle
+        New-PSHtmlLink -rel 'icon' -type 'image/png' -sizes '16x16' -href "data:image/png;base64,$Ico64"
         New-PSHtmlLink -rel 'stylesheet' -href 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css'
         New-PSHtmlLink -rel 'stylesheet' -href 'https://unpkg.com/bootstrap-table@1.20.2/dist/bootstrap-table.min.css'
         New-PSHtmlLink -rel 'stylesheet' -href 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css'
@@ -829,13 +813,16 @@ New-PSHtmlHtml -lang 'en' -Content {
         New-PSHtmlScript -src 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js'
         New-PSHtmlScript -src 'https://unpkg.com/bootstrap-table@1.20.2/dist/bootstrap-table.min.js'
         New-PSHtmlScript -src 'https://cdn.jsdelivr.net/npm/chart.js'
-        New-PSHtmlStyle -Content ".form-control-dark {color: #fff; background-color: rgba(255, 255, 255, .1);} .form-control-dark:focus {box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);} .sidebar-overflow {height: 100%; overflow-x: auto;} .sidebar {position: fixed;top: 0;bottom: 0;left: 0;z-index: 100;padding: 48px 0 0;} .dropdown-toggle { outline: 0; } .accordion-body.bg-dark {color: white;} .btn-toggle,.btn-toggle-nochild {padding: .25rem .5rem; font-weight: 600;} .btn-toggle.btn-light::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle.btn-dark::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle-nav a {padding: .1875rem .5rem; margin-top: .125rem; margin-left: 1.25rem;}"
+        New-PSHtmlStyle -Content ".navbar-brand {font-family: monospace; color: #145184} .form-control-dark {color: #fff; background-color: rgba(255, 255, 255, .1);} .form-control-dark:focus {box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);} .sidebar-overflow {height: 100%; overflow-x: auto;} .sidebar {position: fixed;top: 0;bottom: 0;left: 0;z-index: 100;padding: 48px 0 0;} .dropdown-toggle { outline: 0; } .accordion-body.bg-dark {color: white;} .btn-toggle,.btn-toggle-nochild {padding: .25rem .5rem; font-weight: 600;} .btn-toggle.btn-light::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle.btn-dark::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle-nav a {padding: .1875rem .5rem; margin-top: .125rem; margin-left: 1.25rem;}"
         New-PSHtmlScript -lang 'javascript' -Content "function searchNavbar() { let input = document.getElementById('searchBar').value; input = input.toLowerCase(); let x = document.getElementsByClassName('navitem'); for (i = 0; i < x.length; i++) { if (!x[i].innerHTML.toLowerCase().includes(input)) { x[i].style.display=`"none`" } else { x[i].style=`"`" } } }"
     }
     New-PSHtmlBody -Content {
         New-PSHtmlHeader -class 'navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 border-bottom' -Content {
             New-PSHtmldiv -class 'container-fluid' -Content {
-                New-PSHtmlA -class 'navbar-brand' -href '#' -Content $global:ScriptTitle
+                New-PSHtmlA -class 'navbar-brand' -href '#' -Content {
+                    New-PSHtmlImg -src "data:image/gif;base64,$Ico64" -height 32 -class 'me-1'
+                    New-PSHtmlB -class 'align-middle' -Content $global:ScriptTitle
+                }
                 New-PSHtmlInput -class 'form-control form-control-dark w-100' -id 'searchBar' -onkeyup 'searchNavbar()' -type 'text' -OtherAttributes @{
                     'placeholder' = 'Search'
                     'aria-label'  = 'Search'
@@ -1110,17 +1097,12 @@ New-PSHtmlHtml -lang 'en' -Content {
                                 } -Content {
                                     New-PSHtmlDiv -class 'container-fluid' -Content {
                                         New-PSHtmlP -Content ''
-                                        New-PSHtmlBootstrapTable -TableId 'DNSDomainDetails' -Data $($TenantInfoBasics.Organization.verifiedDomains | Select-Object -Property Id,AuthenticationType,IsDefault,IsInitial,IsVerified,@{
-                                            Name = 'SupportedServices'
-                                            Expression = {
-                                                $_.supportedServices -join ', '
-                                            }
-                                        }) -PropertiesMap @(
+                                        New-PSHtmlBootstrapTable -TableId 'DNSDomainDetails' -Data $TenantInfoBasics.Organization.verifiedDomains -PropertiesMap @(
                                             @{
-                                                field = 'id'
+                                                field = 'name'
                                                 title = 'Name'
                                             }, @{
-                                                field = 'authenticationType'
+                                                field = 'type'
                                                 title = 'Authentication Type'
                                             }, @{
                                                 field = 'isDefault'
@@ -1129,10 +1111,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                 field = 'isInitial'
                                                 title = 'Initial Domain'
                                             }, @{
-                                                field = 'isVerified'
-                                                title = 'Verification Done'
-                                            }, @{
-                                                field = 'SupportedServices'
+                                                field = 'capabilities'
                                                 title = 'Service available'
                                             }
                                         ) -Searchable -Paged -Sortable
@@ -1503,10 +1482,10 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                     New-PSHtmlDiv -class 'col-4 border-end' -Content {
                                                         New-PSHtmlH4 -Content 'Severity'
                                                         New-PSHtmlDiv -class 'row' -Content {
-                                                            New-PSHtmlDiv -class 'col-4' -Content $entry.Severity
+                                                            New-PSHtmlDiv -class 'col-4' -Content $(if ($entry.Weight -gt 7) {'Critical'} elseif ($entry.Weight -gt 3) {'Warning'} else {'Informational'})
                                                             New-PSHtmlDiv -class 'col-5' -Content {
                                                                 New-PSHtmlDiv -class 'progress' -Content {
-                                                                    if ($entry.Severity -match 'Informational|Warning|Critical') {
+                                                                    if ($entry.Weight -ge 0) {
                                                                         New-PSHtmlDiv -class 'progress-bar bg-success' -style 'width: 33.33%' -OtherAttributes @{
                                                                             'role'          = 'progressbar'
                                                                             'aria-valuenow' = '33.33'
@@ -1514,7 +1493,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                                             'aria-valuemax' = '100'
                                                                         }
                                                                     }
-                                                                    if ($entry.Severity -match 'Warning|Critical') {
+                                                                    if ($entry.Weight -gt 3) {
                                                                         New-PSHtmlDiv -class 'progress-bar bg-warning' -style 'width: 33.33%' -OtherAttributes @{
                                                                             'role'          = 'progressbar'
                                                                             'aria-valuenow' = '33.33'
@@ -1522,7 +1501,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                                             'aria-valuemax' = '100'
                                                                         }
                                                                     }
-                                                                    if ($entry.Severity -eq 'Critical') {
+                                                                    if ($entry.Weight -gt 7) {
                                                                         New-PSHtmlDiv -class 'progress-bar bg-danger' -style 'width: 33.33%' -OtherAttributes @{
                                                                             'role'          = 'progressbar'
                                                                             'aria-valuenow' = '33.33'
@@ -1665,16 +1644,17 @@ New-PSHtmlHtml -lang 'en' -Content {
 #Out XML File
 Write-Output -InputObject 'Start generating XML content and file'
 @{
+    Date       = $Start
     Indicators = $Indicators
     RawData    = $Outputs
-} | Export-Clixml -Path "$BaseOutputFilePath.xml" -Depth 99 -Encoding UTF8 -Force
+} | Export-Clixml -Path ('{0}-{1:yyyyMMdd_HHmm}.xml' -f $BaseOutputFilePath, $Start) -Depth 99 -Encoding UTF8 -Force
 #endregion Generating HTML and XML Output File
 
 #Write end message and open HTML File
 Write-Output -InputObject "Script took $(New-TimeSpan -Start $Start -End (Get-Date)) to run."
 Write-Output -InputObject 'Output files are available:'
 Write-Output -InputObject "`tHTML: $BaseOutputFilePath.html"
-Write-Output -InputObject "`tXML : $BaseOutputFilePath.xml"
+Write-Output -InputObject "`tXML : $('{0}-{1:yyyyMMdd_HHmm}.xml' -f $BaseOutputFilePath, $Start)"
 
 if ($OpenHtml) {
     Start-Process -FilePath "$BaseOutputFilePath.html"

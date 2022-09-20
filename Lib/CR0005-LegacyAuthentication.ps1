@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,13 +43,22 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryId             = 6
     Title                  = 'Check if legacy authentication is allowed'
     ScriptName             = 'CR0005-LegacyAuthentication'
     Description            = 'This indicator checks whether legacy authentication is blocked, either via conditional access policies or security defaults.'
     Weight                 = 5
-    Severity               = 'Warning'
     LikelihoodOfCompromise = 'Allowing legacy authentication increases the risk that an attacker will logon using previously compromised credentials. For more info click <a href="https://docs.microsoft.com/en-us/azure/active-directory/conditional-access/block-legacy-authentication" target="_blank">here.</a>'
     ResultMessage          = 'There are ZERO Conditional Access Policies configured to block Legacy Authentication.'
     Remediation            = 'To protect the authentication process, it is recommended to block legacy authentication either through conditional access policies or security defaults.'
@@ -65,6 +79,11 @@ $Output = @{
         GraphAPI    = ''
     }
 }
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
+}
 #endregion Init
 
 #region GraphAPI Connection
@@ -84,6 +103,7 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection

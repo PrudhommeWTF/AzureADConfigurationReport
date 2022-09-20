@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,13 +43,22 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryId             = 2
     Title                  = 'Application Certificates & Secrets creation'
     ScriptName             = 'CR0013-ApplicationCertificatesAndSecrets'
     Description            = 'This indicator checks for newly created Certificates or Secrets on Azure AD Application.'
     Weight                 = 5
-    Severity               = 'Warning'
     LikelihoodOfCompromise = 'Adversaries may add credentials for Applications in addition to existing legitimate credentials in Azure AD. These credentials include both x509 keys and passwords. With sufficient permissions, there are a variety of ways to add credentials including the Azure Portal, Azure command line interface, and Azure or Az PowerShell modules.'
     ResultMessage          = 'Application Registration may have acces from not trusted parties.'
     Remediation            = ''
@@ -65,6 +79,11 @@ $Output = @{
         GraphAPI    = ''
     }
 }
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
+}
 #endregion Init
 
 #region GraphAPI Connection
@@ -84,6 +103,7 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection

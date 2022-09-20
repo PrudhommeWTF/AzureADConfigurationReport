@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,13 +43,23 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Reviewed Weight from 7 to 8
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryId             = 2
     Title                  = 'Non-admin users can register custom applications'
     ScriptName             = 'CR0011-UsersCanRegisterApplications'
     Description            = 'This indicator checks if there exists an authorization policy that enables non-admin users to register custom applications'
-    Weight                 = 7
-    Severity               = 'Critical'
+    Weight                 = 8
     LikelihoodOfCompromise = 'Allowing users to register custom-developed enterprise applications may be used by attackers to register nefarious applications. This can be leveraged, for example, to promote a user to give the attacker''s application permissions, or an admin to give it higher permissions only admins can grant.'
     ResultMessage          = 'Every user can register an application'
     Remediation            = 'It is recommended to disable this setting by going to AAD -> User settings -> App Registrations:Users can register applications -> and select "No" from the options.'
@@ -61,6 +76,11 @@ $Output = @{
         Timespan    = ''
         GraphAPI    = ''
     }
+}
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
 }
 #endregion Init
 
@@ -81,6 +101,7 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection

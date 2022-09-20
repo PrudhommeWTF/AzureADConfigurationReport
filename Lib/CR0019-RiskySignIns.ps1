@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,13 +43,22 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryId             = 5
     Title                  = 'Azure AD Risky Detections'
     ScriptName             = 'CR0019-RiskySignIns'
     Description            = 'Azure AD AI is capable of detecting sign-ins that may not be usual for company and users. It will then mark the sign-ins as "Risky" and depending on configuration may take actions to prevent sign-in.'
-    Weight                 = 0
-    Severity               = 'Warning'
+    Weight                 = 4
     LikelihoodOfCompromise = ''
     ResultMessage          = 'Risky detection have been found in the tenant.'
     Remediation            = 'Ensure that Azure AD Conditional Access and Azure AD MFA is configured properly for all user accounts.'
@@ -65,6 +79,11 @@ $Output = @{
         GraphAPI    = ''
     }
 }
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
+}
 #endregion Init
 
 #region GraphAPI Connection
@@ -84,6 +103,7 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection

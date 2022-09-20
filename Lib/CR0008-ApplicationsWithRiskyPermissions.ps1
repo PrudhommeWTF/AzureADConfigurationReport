@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,13 +43,23 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Moved variable OutputObject from Main to Init region
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryID             = 3
     Title                  = 'Check for risky API permissions granted to application service principals'
     ScriptName             = 'CR0008-ApplicationsWithRiskyPermissions'
     Description            = 'This indicator checks if one of the following risky application roles have been assigned for API permissions: RoleManagement.ReadWrite.Directory that can directly promote to Global Admin, and AppRoleAssignment.ReadWrite.All that can grant SELF above role, thus allowing promotion to Global Admin.'
     Weight                 = 5
-    Severity               = 'Warning'
     LikelihoodOfCompromise = 'A malicious application administrator could use these permissions to grant administrative privileges to themself or another.'
     ResultMessage          = 'There are API permissions on application(s) which may be risky if not intended.'
     Remediation            = 'Please review API permissions for the application(s) listed to ensure only authorized rights are granted.'
@@ -65,7 +80,11 @@ $Output = @{
         GraphAPI    = ''
     }
 }
-$OutputObjects = @()
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
+}
 #endregion Init
 
 #region GraphAPI Connection
@@ -85,11 +104,13 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection
 
 #region Main
+$OutputObjects = @()
 $GetApplications = @{
     Method = 'GET'
     Uri = 'https://graph.microsoft.com/v1.0/applications'

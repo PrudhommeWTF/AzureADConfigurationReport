@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,6 +43,16 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryId             = 4
     Title                  = 'Check user cannot create security groups'
@@ -47,8 +62,7 @@ Restrict security group creation to administrators only
 
 Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
 '@
-    Weight                 = 7 #0 to 7. 0 being informational and 7 being critical
-    Severity               = 'Critical' #Informational, Warning or Critical
+    Weight                 = 8 
     LikelihoodOfCompromise = 'When creating security groups is enabled, all users in the directory are allowed to create new security groups and add members to those groups. Unless a business requires this day-to-day delegation, security group creation should be restricted to administrators only.'
     ResultMessage          = 'Users can create security groups in Azure Active Directory.'
     Remediation            = 'From the Azure Active Directory portal, navigate to the following blade: Groups > General, under setting. Set "Users can create security groups in Azure portals, API or PowerShell" to "No"'
@@ -69,6 +83,11 @@ Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
         GraphAPI    = ''
     }
 }
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
+}
 #endregion Init
 
 #region GraphAPI Connection
@@ -88,6 +107,7 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection

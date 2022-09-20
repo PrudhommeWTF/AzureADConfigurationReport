@@ -24,7 +24,12 @@ Param(
         ParameterSetName = 'Default',
         Mandatory = $true
     )]
-    [String]$TenantAppSecret
+    [String]$TenantAppSecret,
+
+    [Parameter(
+        ParameterSetName = 'ReturnScriptMetadata'
+    )]
+    [Switch]$ReturnScriptMetadata
 )
 
 #region Init
@@ -38,6 +43,16 @@ $Output = @{
             Date      = '09/13/2022 21:30'
             Author    = "Thomas Prud'homme"
         }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.1'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022 23:30'
+            Author    = "Thomas Prud'homme"
+        }
     )
     CategoryId             = 1
     Title                  = 'User cannot invite Guest'
@@ -47,8 +62,7 @@ Restrict invitations to users with specific administrative roles only.
 
 Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
 '@
-    Weight                 = 3 #0 to 7. 0 being informational and 7 being critical
-    Severity               = '' #Informational, Warning or Critical
+    Weight                 = 3
     LikelihoodOfCompromise = 'Restricting invitations to users with specific administrator roles ensures that only authorized accounts have access to cloud resources. This helps to maintain "Need to Know" permissions and prevents inadvertent access to data.By default the setting Guest invite restrictions is set to Anyone in the organization can invite guest users including guests and non-admins. This would allow anyone within the organization to invite guests and non-admins to the tenant, posing a security risk.'
     ResultMessage          = 'Allow everyone in the organization, including guest users, to invite external users. The default setting for all cloud environments except US Government.'
     Remediation            = 'From the Azure Active Directory portal, navigate to the following blade: External Identities > External collaboration settings. In Guest invite settings, for Guest invite restrictions, check that "Only users assigned to specific admin roles can invite guest users" is selected'
@@ -69,6 +83,11 @@ Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
         GraphAPI    = ''
     }
 }
+
+if ($ReturnScriptMetadata) {
+    Write-Output -InputObject $Output
+    Exit
+}
 #endregion Init
 
 #region GraphAPI Connection
@@ -88,6 +107,7 @@ try {
 catch {
     $_ | Write-Error
     $Output.Result.GraphAPI = "Failed - $($_.Message)"
+    [PSCustomObject]$Output
     exit
 }
 #endregion GraphAPI Connection
