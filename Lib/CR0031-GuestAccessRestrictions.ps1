@@ -36,27 +36,8 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0031'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Removed Severity
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 1
-    Title                  = 'Guest Access permissions'
     ScriptName             = 'CR0031-GuestAccessRestrictions'
+    Title                  = 'Guest Access permissions'
     Description            = @'
 Limit guest user permissions.
 Limiting guest access ensures that guest accounts do not have permission for certain directory tasks, such as enumerating users, groups or other directory resources, and cannot be assigned to administrative roles in your directory.
@@ -66,6 +47,7 @@ Limiting guest access ensures that guest accounts do not have permission for cer
 
 Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
 '@
+    CategoryId             = 1
     Weight                 = 4
     LikelihoodOfCompromise = 'Guest may have access to User properties that you do not want to expose.'
     ResultMessage          = ''
@@ -86,6 +68,30 @@ Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {

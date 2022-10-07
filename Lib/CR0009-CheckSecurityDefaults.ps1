@@ -36,28 +36,10 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0009'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Removed Severity
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 1
-    Title                  = 'Security defaults not enabled'
     ScriptName             = 'CR0009-CheckSecurityDefaults'
+    Title                  = 'Security defaults not enabled'
     Description            = 'This indicator checks whether security defaults are enabled when there are no conditional access policies configured.'
+    CategoryId             = 1
     Weight                 = 6
     LikelihoodOfCompromise = 'As attackers constantly attempt to compromise cloud environments, it is important to maintain the highest possible security baseline for authentication. To protect the authentication process and privileged actions, security defaults are recommended for tenants that have no conditional access policies configured. Security defaults will require MFA, block legacy authentication, and require additional authentication when accessing the Azure portal, Azure Powershell, or the Azure CLI.'
     ResultMessage          = 'There are ZERO Conditional Access Policies enabled and Security Defaults are not configured.'
@@ -78,6 +60,30 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -175,7 +181,7 @@ if ($SecurityDefaultEnabled -eq $false) {
     $Output.Result.Status      = 'Fail'
 } else {
     $Output.Result.Score       = 100
-    $Output.Result.Message     = 'No evidence of exposure'
+    $Output.Result.Message     = 'No exposure evidence'
     $Output.Result.Remediation = 'None'
     $Output.Result.Status      = 'Pass'
     $Output.Result.Data        = $ConditionalAccessPolicies

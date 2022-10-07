@@ -36,34 +36,13 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0002'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Weight reviewed from 7 to 8
-Removed Severity
-Moved variable AADRolesMapping in Main region instead of Init
-Added missing region to connect to GraphAPI in case of run without GraphAPIToken
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 3
-    Title                  = 'Users with privileges in AD and AAD'
     ScriptName             = 'CR0002-UsersWithPrivilegesInADAndAAD'
-    Description            = 'This indicator checks for AAD privileged users that are also privileged in on-premise AD.'
+    Title                  = 'Users with privileges in AD and AAD'
+    Description            = 'Check Rule that looks for AAD privileged users that are also privileged in on-premise AD.'
+    CategoryId             = 3
     Weight                 = 8
-    LikelihoodOfCompromise = 'The compromise of an account that is privileged in both AD and AAD can result in both environments being compromised.'
-    ResultMessage          = 'Found {COUNT} Privileged AAD users that are also privileged in AD'
+    LikelihoodOfCompromise = 'Compromised account with privileges in both AD and AAD can result in both environments being exposed.'
+    ResultMessage          = '{COUNT} Azure AD users member of Admin Roles that are also privileged in AD'
     Remediation            = @'
 Privileged in AD >  Do not sync to AAD.
 Privileged in AAD > Make sure it is not a synced account, and not a continuous role member but rather an eligible role member (use PIM with eligible roles protected with MFA when elevating).
@@ -84,6 +63,33 @@ Privileged in AAD > Make sure it is not a synced account, and not a continuous r
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Weight reviewed from 7 to 8
+Removed Severity
+Moved variable AADRolesMapping in Main region instead of Init
+Added missing region to connect to GraphAPI in case of run without GraphAPIToken
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -336,7 +342,7 @@ if ((Get-WmiObject -Class Win32_ComputerSystem).PartOfDomain -eq $true) {
         }
         else {
             $Output.Result.Score       = 100
-            $Output.Result.Message     = "No evidence of exposure"
+            $Output.Result.Message     = 'No exposure evidence'
             $Output.Result.Remediation = "None"
             $Output.Result.Status      = "Pass"
         }

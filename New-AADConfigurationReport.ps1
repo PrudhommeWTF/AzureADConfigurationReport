@@ -216,6 +216,45 @@ Function New-PSHtmlChartJS {
         } | ConvertTo-Json -Depth 99 -Compress));"
     }
 }
+Function New-PSHtmlWeightObject {
+    Param(
+        [Parameter(
+            Mandatory = $true
+        )]
+        [Int]$Weight
+    )
+    New-PSHtmlDiv -class 'row' -Content {
+        New-PSHtmlDiv -class 'col' -Content $(if ($Weight -gt 7) {'Critical'} elseif ($Weight -gt 3) {'Warning'} else {'Informational'})
+        New-PSHtmlDiv -class 'col' -Content {
+            New-PSHtmlDiv -class 'progress' -Content {
+                if ($Weight -ge 0) {
+                    New-PSHtmlDiv -class 'progress-bar bg-success' -style 'width: 33.33%' -OtherAttributes @{
+                        'role'          = 'progressbar'
+                        'aria-valuenow' = '33.33'
+                        'aria-valuemin' = '0'
+                        'aria-valuemax' = '100'
+                    }
+                }
+                if ($Weight -gt 3) {
+                    New-PSHtmlDiv -class 'progress-bar bg-warning' -style 'width: 33.33%' -OtherAttributes @{
+                        'role'          = 'progressbar'
+                        'aria-valuenow' = '33.33'
+                        'aria-valuemin' = '0'
+                        'aria-valuemax' = '100'
+                    }
+                }
+                if ($Weight -gt 7) {
+                    New-PSHtmlDiv -class 'progress-bar bg-danger' -style 'width: 33.33%' -OtherAttributes @{
+                        'role'          = 'progressbar'
+                        'aria-valuenow' = '33.33'
+                        'aria-valuemin' = '0'
+                        'aria-valuemax' = '100'
+                    }
+                }
+            }
+        }
+    }
+}
 Function Invoke-ParallelRunSpace{
     <#
         .SYNOPSIS
@@ -662,6 +701,100 @@ $HtmlCredits = @(
     }
 )
 
+#Script Change Log
+$ChangeLog = @(
+    [PSCustomObject]@{
+        Version   = [Version]'1.0.0.0'
+        ChangeLog = 'First release'
+        Date      = '07/27/2022'
+        Author    = "Thomas Prud'homme"
+    }
+    [PSCustomObject]@{
+        Version   = [Version]'1.0.1.0'
+        ChangeLog = @'
+Moved PSHtml functions to a dedicated mobule
+Reviewed standalone scripts naming convention, to be called Check Rules (CRXXXX) and moved the scripts to a dedicated folder "Lib"
+'@.Replace([System.Environment]::NewLine, '<br>')
+        Date      = '08/31/2022'
+        Author    = "Thomas Prud'homme"
+    }
+    [PSCustomObject]@{
+        Version   = [Version]'1.0.1.1'
+        ChangeLog = @'
+Corrected Dark Theme switch behavior
+Reviewed Loading configuration file
+Start working on: generating Azure AD App Registration and API Permissions from inegrated GUI
+'@.Replace([System.Environment]::NewLine, '<br>')
+        Date      = '09/05/2022'
+        Author    = "Thomas Prud'homme"
+    }
+    [PSCustomObject]@{
+        Version   = [Version]'1.0.2.0'
+        ChangeLog = @'
+Comment Based Help to functions
+Set-ConfigurationFile:
+- Review WPF Gui
+- Added Azure AD App creation
+HTML Output with sidebar overflow
+'@.Replace([System.Environment]::NewLine, '<br>')
+        Date      = '09/08/2022'
+        Author    = "Thomas Prud'homme"
+    }
+    [PSCustomObject]@{
+        Version   = [Version]'1.0.3.0'
+        ChangeLog = @'
+Added target Tenant Information Region.
+Add External Tenant Usage table in Tenant Information section.
+Add change log of each Check Rules
+Resize Offcanvas for each script details to display change logs
+'@.Replace([System.Environment]::NewLine, '<br>')
+        Date      = '09/13/2022'
+        Author    = "Thomas Prud'homme"
+    }
+    [PSCustomObject]@{
+        Version   = [Version]'1.0.4.0'
+        ChangeLog = @'
+Reviewed New-PSHtmlChartJS function from scratch
+Added line chart to display evolution on Indicators of the past 5 XML
+'@.Replace([System.Environment]::NewLine, '<br>')
+        Date      = '09/15/2022'
+        Author    = "Thomas Prud'homme"
+    }
+    [PSCustomObject]@{
+        Version   = [Version]'1.0.5.0'
+        ChangeLog = @'
+Replaced array of Graph API permissions by a calculated array
+Html output will now be unique per tenant instead of timestamped
+Renamed from 'Azure AD Configuration Report' to 'AzureAD Insight'
+Added an image as logo and favicon
+Easy history fetch from XML files for Indicators
+Corrected issue with Domain list in the Tenant Infos accordion
+Replaced CR Severity to logic based on CR Weigth
+Added Date in the XML export file in order to easy access to history
+'@.Replace([System.Environment]::NewLine, '<br>')
+        Date      = '09/20/2022'
+        Author    = "Thomas Prud'homme"
+    }
+    [PSCustomObject]@{
+        Version   = [Version]'1.0.6.0'
+        ChangeLog = 'Added change log into main script and the html in About offcanvas'
+        Date      = '09/21/2022'
+        Author    = "Thomas Prud'homme"
+    }
+    [PSCustomObject]@{
+        Version = [Version]'1.0.7.0'
+        ChangeLog = @'
+Added PowerShell function New-PSHtmlWeightObject to calculate and generate html code with weight translation to severity level and progressbar
+Moved each Check Rule severity and progressbar to use the new function New-PSHtmlWeightObject
+Added HTML button "Back to top" in the right-end corner when scrolled down the output
+Changed pointer style when hover card title and accordion header
+Added a table list style of failed Check Rules with weight higher than 3 (severity Warning higher)
+'@.Replace([System.Environment]::NewLine, '<br>')
+Date      = '10/07/2022'
+Author    = "Thomas Prud'homme"
+    }
+)
+
 #Array to contain Indicators, used in outputs files
 [Collections.ArrayList]$Indicators = @()
 
@@ -813,7 +946,7 @@ New-PSHtmlHtml -lang 'en' -Content {
         New-PSHtmlScript -src 'https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js'
         New-PSHtmlScript -src 'https://unpkg.com/bootstrap-table@1.20.2/dist/bootstrap-table.min.js'
         New-PSHtmlScript -src 'https://cdn.jsdelivr.net/npm/chart.js'
-        New-PSHtmlStyle -Content ".navbar-brand {font-family: monospace; color: #145184} .form-control-dark {color: #fff; background-color: rgba(255, 255, 255, .1);} .form-control-dark:focus {box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);} .sidebar-overflow {height: 100%; overflow-x: auto;} .sidebar {position: fixed;top: 0;bottom: 0;left: 0;z-index: 100;padding: 48px 0 0;} .dropdown-toggle { outline: 0; } .accordion-body.bg-dark {color: white;} .btn-toggle,.btn-toggle-nochild {padding: .25rem .5rem; font-weight: 600;} .btn-toggle.btn-light::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle.btn-dark::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle-nav a {padding: .1875rem .5rem; margin-top: .125rem; margin-left: 1.25rem;}"
+        New-PSHtmlStyle -Content "#toTop {position: fixed; bottom: 10px; right: 10px; cursor: pointer; display: none;} .navbar-brand {font-family: monospace; color: #145184} .form-control-dark {color: #fff; background-color: rgba(255, 255, 255, .1);} .form-control-dark:focus {box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);} .sidebar-overflow {height: 100%; overflow-x: auto;} .sidebar {position: fixed;top: 0;bottom: 0;left: 0;z-index: 100;padding: 48px 0 0;} .dropdown-toggle { outline: 0; } .accordion-body.bg-dark {color: white;} .btn-toggle,.btn-toggle-nochild {padding: .25rem .5rem; font-weight: 600;} .btn-toggle.btn-light::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%280,0,0%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle.btn-dark::before {width: 1.25em; line-height: 0; content: url(`"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='rgba%28255,255,255%29' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 14l6-6-6-6'/%3e%3c/svg%3e`");} .btn-toggle-nav a {padding: .1875rem .5rem; margin-top: .125rem; margin-left: 1.25rem;}"
         New-PSHtmlScript -lang 'javascript' -Content "function searchNavbar() { let input = document.getElementById('searchBar').value; input = input.toLowerCase(); let x = document.getElementsByClassName('navitem'); for (i = 0; i < x.length; i++) { if (!x[i].innerHTML.toLowerCase().includes(input)) { x[i].style.display=`"none`" } else { x[i].style=`"`" } } }"
     }
     New-PSHtmlBody -Content {
@@ -824,7 +957,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                     New-PSHtmlB -class 'align-middle' -Content $global:ScriptTitle
                 }
                 New-PSHtmlInput -class 'form-control form-control-dark w-100' -id 'searchBar' -onkeyup 'searchNavbar()' -type 'text' -OtherAttributes @{
-                    'placeholder' = 'Search'
+                    'placeholder' = 'Search menu'
                     'aria-label'  = 'Search'
                 }
                 New-PSHtmlDiv -class 'navbar-nav ps-2' -style 'flex-direction: row;' -Content {
@@ -884,6 +1017,14 @@ New-PSHtmlHtml -lang 'en' -Content {
                                 'aria-controls'  = 'credit'
                                 'aria-selected'  = $false
                             } -Content 'Credit'
+                            New-PSHtmlbutton -class 'nav-link' -id 'scriptChangeLog-tab' -OtherAttributes @{
+                                'data-bs-toggle' = 'tab'
+                                'data-bs-target' = '#scriptChangeLog'
+                                'type'           = 'button'
+                                'role'           = 'tab'
+                                'aria-controls'  = 'scriptChangeLog'
+                                'aria-selected'  = $false
+                            } -Content 'Change Log'
                         }
                     }
                     New-PSHtmldiv -class 'tab-content mt-2' -Content {
@@ -907,6 +1048,13 @@ New-PSHtmlHtml -lang 'en' -Content {
                                     }
                                 }
                             }
+                        }
+                        New-PSHtmldiv -class 'tab-pane fade' -id 'scriptChangeLog' -OtherAttributes @{
+                            'role' = 'tabpanel'
+                            'aria-labelledby' = 'scriptChangeLog-tab'
+                            'tabindex' = 0
+                        } -Content {
+                            New-PSHtmlBootstrapTable -TableId 'scriptChangeLogTable' -Data $ChangeLog -Searchable
                         }
                     }
                     
@@ -950,7 +1098,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                 #Tenant Information Html Card
                 New-PSHtmlDiv -class 'card bg-light mb-2' -id 'TenantInfoCard' -Content {
                     $TenantInfosCardId = 'TenantInformations'
-                    New-PSHtmlDiv -class 'card-header collapsed' -OtherAttributes @{
+                    New-PSHtmlDiv -class 'card-header collapsed' -style 'cursor: pointer;' -OtherAttributes @{
                         'data-bs-toggle' = 'collapse'
                         'data-bs-target' = "#$TenantInfosCardId"
                         'aria-expanded'  = $false
@@ -981,7 +1129,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                         New-PSHtmldiv -class 'accordion' -id 'tenantInfoAccordion' -Content {
                             #Tenant Business Card
                             New-PSHtmldiv -class 'accordion-item' -Content {
-                                New-PSHtmlH2 -class 'accordion-header' -id 'businessCardLabel' -Content {
+                                New-PSHtmlH2 -class 'accordion-header' -id 'businessCardLabel' -style 'cursor: pointer;' -Content {
                                     New-PSHtmlbutton -class 'accordion-button' -OtherAttributes @{
                                         'type'           = 'button'
                                         'data-bs-toggle' = 'collapse'
@@ -1037,7 +1185,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                             }
                             #Notification Email
                             New-PSHtmldiv -class 'accordion-item' -Content {
-                                New-PSHtmlh2 -class 'accordion-header' -id 'notificationEmailLabel' -Content {
+                                New-PSHtmlh2 -class 'accordion-header' -id 'notificationEmailLabel' -style 'cursor: pointer;' -Content {
                                     New-PSHtmlbutton -class 'accordion-button' -OtherAttributes @{
                                         'type' = 'button'
                                         'data-bs-toggle' = 'collapse'
@@ -1054,7 +1202,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                             }
                             #Object Usage Progress
                             New-PSHtmldiv -class 'accordion-item' -Content {
-                                New-PSHtmlh2 -class 'accordion-header' -id 'ObjectUsageHead' -Content {
+                                New-PSHtmlh2 -class 'accordion-header' -id 'ObjectUsageHead' -style 'cursor: pointer;' -Content {
                                     New-PSHtmlbutton -class 'accordion-button' -OtherAttributes @{
                                         'type' = 'button'
                                         'data-bs-toggle' = 'collapse'
@@ -1083,7 +1231,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                             }
                             #Domain Details
                             New-PSHtmldiv -class 'accordion-item' -Content {
-                                New-PSHtmlh2 -class 'accordion-header' -id 'DNSDomainsLabel' -Content {
+                                New-PSHtmlh2 -class 'accordion-header' -id 'DNSDomainsLabel' -style 'cursor: pointer;' -Content {
                                     New-PSHtmlbutton -class 'accordion-button' -OtherAttributes @{
                                         'type'           = 'button'
                                         'data-bs-toggle' = 'collapse'
@@ -1121,7 +1269,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                             #External Tenant usage
                             New-PSHtmldiv -class 'accordion-item' -Content {
                                 $ExternalTenants = ($Outputs | Where-Object -FilterScript {$_.Id -eq 'TI0004'}).Result
-                                New-PSHtmlh2 -class 'accordion-header' -id 'ExternalTenantUsageLabel' -Content {
+                                New-PSHtmlh2 -class 'accordion-header' -id 'ExternalTenantUsageLabel' -style 'cursor: pointer;' -Content {
                                     New-PSHtmlbutton -class 'accordion-button' -OtherAttributes @{
                                         'type'           = 'button'
                                         'data-bs-toggle' = 'collapse'
@@ -1176,7 +1324,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                             }
                             #Accounts Analysis
                             New-PSHtmldiv -class 'accordion-item' -Content {
-                                New-PSHtmlh2 -class 'accordion-header' -id 'AccountsAnalysisLabel' -Content {
+                                New-PSHtmlh2 -class 'accordion-header' -id 'AccountsAnalysisLabel' -style 'cursor: pointer;' -Content {
                                     New-PSHtmlButton -class 'accordion-button' -OtherAttributes @{
                                         'type'           = 'button'
                                         'data-bs-toggle' = 'collapse'
@@ -1245,7 +1393,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                 #Azure AD Indicators
                 New-PSHtmlDiv -class 'card bg-light mb-2' -id 'AzureADIndicatorCard' -Content {
                     $AzureADIndicatorsCardId = 'AzureADIndicators'
-                    New-PSHtmlDiv -class 'card-header' -OtherAttributes @{
+                    New-PSHtmlDiv -class 'card-header' -style 'cursor: pointer;' -OtherAttributes @{
                         'data-bs-toggle' = 'collapse'
                         'data-bs-target' = "#$AzureADIndicatorsCardId"
                         'aria-expanded' = $true
@@ -1254,9 +1402,9 @@ New-PSHtmlHtml -lang 'en' -Content {
                         New-PSHtmlH5 -Content 'Azure AD Indicators'
                     }
                     New-PSHtmlDiv -class 'card-body collapse show' -id $AzureADIndicatorsCardId -Content {
-                        New-PSHtmlH2 -Content 'MITRE ATT&CK'
+                        New-PSHtmlH2 -Content 'Dashobard'
                         New-PSHtmlDiv -class 'row justify-content-center' -Content {
-                            New-PSHtmldiv -class 'col-10 row row-cols-1 row-cols-md-3 g-4' -Content {
+                            New-PSHtmldiv -class 'col-10 row row-cols-1 row-cols-md-3' -Content {
                                 foreach ($category in ($Categories | Where-Object -FilterScript {$_.Indicator -eq $true})) {
                                     $History         = $IndicatorsHistory | Where-Object -FilterScript {$_.Name -eq $category.Name}
                                     $AllScoreResults = ($Outputs | Where-Object -FilterScript {$_.CategoryId -eq $category.Id}).Result.Score | Measure-Object -Sum
@@ -1294,6 +1442,43 @@ New-PSHtmlHtml -lang 'en' -Content {
                                 }
                             }
                         }
+                        New-PSHtmlH2 -Content 'Failed Check Rules' -class 'mt-4'
+                        New-PSHtmlBootstrapTable -TableId 'FailedCheckRulesTable' -Data $($Outputs | Where-Object -FilterScript {$_.Result.Status -ne 'Pass' -and $_.Weight -gt 3} | Sort-Object -Property @{
+                            Expression = {$_.Weight}
+                            Ascending  = $false
+                        }, @{
+                            Expression = {$_.CategoryId}
+                            Ascending  = $false
+                        } | Select-Object -Property Title, @{
+                            Name = 'Category'
+                            Expression = {
+                                ($Categories | Where-Object -Property Id -EQ $_.CategoryId).Name
+                            }
+                        }, @{
+                            Name = 'Severity'
+                            Expression = {
+                                New-PSHtmlWeightObject -Weight $_.Weight
+                            }
+                        }, @{
+                            Name = 'Link'
+                            Expression = {
+                                New-PSHtmlA -Content 'Details' -href "#$($_.Id)-heading"
+                            }
+                        }) -Paged -PropertiesMap @(
+                            @{
+                                field = 'Title'
+                                title = 'Check Rule Name'
+                            }, @{
+                                field = 'Category'
+                                title = 'Category'
+                            }, @{
+                                field = 'Severity'
+                                title = 'Severity'
+                            }, @{
+                                field = 'Link'
+                                title = 'Link to finding'
+                            }
+                        )#
                     }
                 }
                 #Looping in all categories output and generating Html Cards
@@ -1301,7 +1486,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                     $CardHtmlId = $category.Name.Replace(' ','')
                     $Items = $Outputs | Where-Object -FilterScript {$_.CategoryId -eq $category.Id}
                     New-PSHtmlDiv -class 'card bg-light mb-2' -id "Card$($category.Id)" -Content {
-                        New-PSHtmlDiv -class 'card-header' -OtherAttributes @{
+                        New-PSHtmlDiv -class 'card-header' -style 'cursor: pointer;' -OtherAttributes @{
                             'data-bs-toggle' = 'collapse'
                             'data-bs-target' = "#$CardHtmlId"
                             'aria-expanded' = $true
@@ -1333,7 +1518,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                             New-PSHtmlDiv -class 'accordion' -id "$($CardHtmlId)Accordion" -Content {
                                 foreach ($entry in $Items) {
                                     New-PSHtmlDiv -class 'accordion-item' -Content {
-                                        New-PSHtmlH2 -class 'accordion-header' -id "$($entry.Id)-heading" -title $entry.ScriptName -Content {
+                                        New-PSHtmlH2 -class 'accordion-header' -id "$($entry.Id)-heading" -title $entry.ScriptName -style 'cursor: pointer;' -Content {
                                             New-PSHtmlDiv -class 'accordion-button' -OtherAttributes @{
                                                 'data-bs-toggle' = 'collapse'
                                                 'data-bs-target' = "#$($entry.Id)"
@@ -1470,7 +1655,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                                                 field = 'Author'
                                                                                 title = 'Author'
                                                                             }
-                                                                        ))# -replace '"\\/Date(','Date(' -replace ')\\/"',')'
+                                                                        ))
                                                                     }
                                                                 }
                                                             }
@@ -1481,38 +1666,7 @@ New-PSHtmlHtml -lang 'en' -Content {
                                                 New-PSHtmlDiv -class 'row py-2 border-bottom border-top' -Content {
                                                     New-PSHtmlDiv -class 'col-4 border-end' -Content {
                                                         New-PSHtmlH4 -Content 'Severity'
-                                                        New-PSHtmlDiv -class 'row' -Content {
-                                                            New-PSHtmlDiv -class 'col-4' -Content $(if ($entry.Weight -gt 7) {'Critical'} elseif ($entry.Weight -gt 3) {'Warning'} else {'Informational'})
-                                                            New-PSHtmlDiv -class 'col-5' -Content {
-                                                                New-PSHtmlDiv -class 'progress' -Content {
-                                                                    if ($entry.Weight -ge 0) {
-                                                                        New-PSHtmlDiv -class 'progress-bar bg-success' -style 'width: 33.33%' -OtherAttributes @{
-                                                                            'role'          = 'progressbar'
-                                                                            'aria-valuenow' = '33.33'
-                                                                            'aria-valuemin' = '0'
-                                                                            'aria-valuemax' = '100'
-                                                                        }
-                                                                    }
-                                                                    if ($entry.Weight -gt 3) {
-                                                                        New-PSHtmlDiv -class 'progress-bar bg-warning' -style 'width: 33.33%' -OtherAttributes @{
-                                                                            'role'          = 'progressbar'
-                                                                            'aria-valuenow' = '33.33'
-                                                                            'aria-valuemin' = '0'
-                                                                            'aria-valuemax' = '100'
-                                                                        }
-                                                                    }
-                                                                    if ($entry.Weight -gt 7) {
-                                                                        New-PSHtmlDiv -class 'progress-bar bg-danger' -style 'width: 33.33%' -OtherAttributes @{
-                                                                            'role'          = 'progressbar'
-                                                                            'aria-valuenow' = '33.33'
-                                                                            'aria-valuemin' = '0'
-                                                                            'aria-valuemax' = '100'
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                        
+                                                        New-PSHtmlWeightObject -Weight $entry.Weight
                                                     }
                                                     New-PSHtmlDiv -class 'col-6' -Content {
                                                         New-PSHtmlH4 -Content 'Weight'
@@ -1573,7 +1727,24 @@ New-PSHtmlHtml -lang 'en' -Content {
                 }
             }
         }
+        New-PSHtmlDiv -class 'btn btn-primary' -id 'toTop'-Content {
+            New-PSHtmlSpan -class 'bi bi-chevron-up'
+            'Back to Top'
+        }
         New-PSHtmlScript -Content @'
+$(document).ready(function(){
+    $(window).scroll(function () {
+        if ($(this).scrollTop() != 0) {
+            $('#toTop').fadeIn();
+        } else {
+            $('#toTop').fadeOut();
+        }
+    }); 
+    $('#toTop').click(function(){
+            $("html, body").animate({ scrollTop: 0 }, 600);
+        return false;
+    });
+});
 (function () {
     function onToggleMode() {
         if (lightSwitch.checked) {

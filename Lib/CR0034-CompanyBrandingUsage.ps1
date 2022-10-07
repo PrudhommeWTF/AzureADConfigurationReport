@@ -35,16 +35,16 @@ Param(
 #region Init
 $Start  = Get-Date
 $Output = @{
-    ID                     = 'CR0000'
-    ScriptName             = 'CR0000-Template'
-    Title                  = ''
-    Description            = ''
-    CategoryId             = 0
-    Weight                 = 0 #0 to 10. 0 being informational and 10 being critical
-    LikelihoodOfCompromise = ''
-    ResultMessage          = ''
-    Remediation            = ''
-    Permissions            = @()
+    ID                     = 'CR0034'
+    ScriptName             = 'CR0034-CompanyBrandingUsage'
+    Title                  = 'Company branding is used'
+    Description            = 'Check Rule to check and ensure that you are using Company Branding feature.'
+    CategoryId             = 7
+    Weight                 = 3 #0 to 10. 0 being informational and 10 being critical
+    LikelihoodOfCompromise = 'Keeping the default Microsoft login page is not recommanded. With new attack vectors and credentials theft technics users may connect to portals that looks like the default login page of Microsoft Online. Using Company Branding to display your Company Logo and a Custom background in the Azure AD login page will give your users a clue when they are authenticating over Microsoft portals if they are being phished. '
+    ResultMessage          = 'You are not using Company Branding.'
+    Remediation            = 'Use Company Branding with your company logo and a custom background image linked to your company.'
+    Permissions            = @('Organization.Read.All')
     SecurityFrameworks = @(
         @{
             Name = ''
@@ -64,7 +64,7 @@ $Output = @{
         [PSCustomObject]@{
             Version   = [Version]'1.0.0.0'
             ChangeLog = 'Initial version'
-            Date      = '09/13/2022'
+            Date      = '10/07/2022'
             Author    = "Thomas Prud'homme"
         }
     )
@@ -99,7 +99,28 @@ catch {
 #endregion GraphAPI Connection
 
 #region Main
-
+$BaseUri = 'https://graph.microsoft.com/v1.0'
+$Rest101 = @{
+    Method = 'Get'
+    ContentType = 'application/json'
+    Headers = @{
+        Authorization = "Bearer $GraphToken"
+    }
+}
+$OrgInfos = (Invoke-RestMethod -Uri "$BaseUri/organization" @Rest101).Value
+try {
+    $null = Invoke-RestMethod -Uri "$BaseUri/organization/$($OrgInfos.id)/branding" @Rest101
+    $Output.Result.Score       = 100
+    $Output.Result.Message     = $Output.ResultMessage
+    $Output.Result.Remediation = $Output.Remediation
+    $Output.Result.Status      = 'Fail'
+}
+catch {
+    $Output.Result.Score       = 0
+    $Output.Result.Message     = 'No exposure evidence'
+    $Output.Result.Remediation = 'None'
+    $Output.Result.Status      = 'Pass'
+}
 #endregion Main
 
 $Output.Result.Timespan = [String](New-TimeSpan -Start $Start -End (Get-Date))

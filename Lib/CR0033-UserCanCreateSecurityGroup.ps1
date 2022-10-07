@@ -36,32 +36,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0033'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Removed Severity
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 4
-    Title                  = 'Check user cannot create security groups'
     ScriptName             = 'CR0033-UserCanCreateSecurityGroup'
+    Title                  = 'Check user cannot create security groups'
     Description            = @'
 Restrict security group creation to administrators only
 
 Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
 '@
+    CategoryId             = 4
     Weight                 = 8 
     LikelihoodOfCompromise = 'When creating security groups is enabled, all users in the directory are allowed to create new security groups and add members to those groups. Unless a business requires this day-to-day delegation, security group creation should be restricted to administrators only.'
     ResultMessage          = 'Users can create security groups in Azure Active Directory.'
@@ -82,6 +64,30 @@ Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {

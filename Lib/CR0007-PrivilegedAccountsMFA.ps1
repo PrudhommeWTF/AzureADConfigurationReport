@@ -36,30 +36,10 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0007'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Reviewed Weight from 7 to 8
-Removed Severity
-Moved variable AADRolesMapping & OutputObjects to Main region instead of Init
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 5
-    Title                  = 'MFA not configured for privileged accounts'
     ScriptName             = 'CR0007-PrivilegedAccountsMFA'
+    Title                  = 'MFA not configured for privileged accounts'
     Description            = 'This indicator checks that MFA (Multi-Factor Authentication) is enabled for users with administrative rights.'
+    CategoryId             = 5
     Weight                 = 8
     LikelihoodOfCompromise = 'Accounts having privileged access are more valuable targets to attackers. A compromise of a privileged user represents a significant risk. As a result, these accounts require extra protections.'
     ResultMessage          = '{COUNT} privileged user(s) found without MFA configured.'
@@ -80,6 +60,32 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Reviewed Weight from 7 to 8
+Removed Severity
+Moved variable AADRolesMapping & OutputObjects to Main region instead of Init
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -232,7 +238,7 @@ if ($UniqueOutputObjects.count -eq 0) {
     $Output.Result.Status        = 'Fail'
 } else {
     $Output.Result.Score         = 100
-    $Output.Result.Message       = "No evidence of exposure"
+    $Output.Result.Message       = 'No exposure evidence'
     $Output.Result.Remediation   = "None"
     $Output.Result.Status        = "Pass"
 }

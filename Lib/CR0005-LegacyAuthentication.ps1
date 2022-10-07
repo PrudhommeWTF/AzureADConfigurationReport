@@ -36,28 +36,10 @@ Param(
 $Start = Get-Date
 $Output = @{
     ID                     = 'CR0005'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Removed Severity
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 6
-    Title                  = 'Check if legacy authentication is allowed'
     ScriptName             = 'CR0005-LegacyAuthentication'
+    Title                  = 'Check if legacy authentication is allowed'
     Description            = 'This indicator checks whether legacy authentication is blocked, either via conditional access policies or security defaults.'
+    CategoryId             = 6
     Weight                 = 5
     LikelihoodOfCompromise = 'Allowing legacy authentication increases the risk that an attacker will logon using previously compromised credentials. For more info click <a href="https://docs.microsoft.com/en-us/azure/active-directory/conditional-access/block-legacy-authentication" target="_blank">here.</a>'
     ResultMessage          = 'There are ZERO Conditional Access Policies configured to block Legacy Authentication.'
@@ -78,6 +60,30 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -166,7 +172,7 @@ if ($LegacyAuthBlocked -eq $false) {
     $Output.Result.Status      = 'Fail'
 } else {
     $Output.Result.Score       = 100
-    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Message     = 'No exposure evidence'
     $Output.Result.Remediation = "None"
     $Output.Result.Status      = "Pass"
 }

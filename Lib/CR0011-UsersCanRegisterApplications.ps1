@@ -36,29 +36,10 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0011'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Reviewed Weight from 7 to 8
-Removed Severity
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 2
-    Title                  = 'Non-admin users can register custom applications'
     ScriptName             = 'CR0011-UsersCanRegisterApplications'
+    Title                  = 'Non-admin users can register custom applications'
     Description            = 'This indicator checks if there exists an authorization policy that enables non-admin users to register custom applications'
+    CategoryId             = 2
     Weight                 = 8
     LikelihoodOfCompromise = 'Allowing users to register custom-developed enterprise applications may be used by attackers to register nefarious applications. This can be leveraged, for example, to promote a user to give the attacker''s application permissions, or an admin to give it higher permissions only admins can grant.'
     ResultMessage          = 'Every user can register an application'
@@ -76,6 +57,31 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Reviewed Weight from 7 to 8
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -131,7 +137,7 @@ if ($AuthorizationPolicies.defaultUserRolePermissions.allowedToCreateApps -eq $t
 
 } else {
     $Output.Result.Score       = 100
-    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Message     = 'No exposure evidence'
     $Output.Result.Remediation = "None"
     $Output.Result.Status      = "Pass"
 }

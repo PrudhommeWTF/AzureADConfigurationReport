@@ -36,28 +36,10 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0004'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Removed Severity
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 3
-    Title                  = 'Administrative units are not being used'
     ScriptName             = 'CR0004-UseOfAdministrativeUnits'
+    Title                  = 'Administrative units are not being used'
     Description            = 'This indicator checks for the existence of administrative units. Administrative units are helpful to limit the scope of a security principle''s authority.'
+    CategoryId             = 3
     Weight                 = 4
     LikelihoodOfCompromise = 'Attackers that compromise an administrator account could have wide-ranging access across resources. By utilizing admninistrative units, it is possible to limit the scope of specific admins and ensure that a single compromise of credentials is constrained and does not affect the entire environment. For more info click <a href="https://docs.microsoft.com/en-us/azure/active-directory/roles/administrative-units" target="_blank">here.</a>'
     ResultMessage          = 'There are ZERO Administrative Units created.'
@@ -78,6 +60,30 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -143,7 +149,7 @@ if ($AdministrativeUnits.count -eq 0) {
 } else {
     $Output.Result.Score = 100
     $Output.Result.Data        = $AdministrativeUnits
-    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Message     = 'No exposure evidence'
     $Output.Result.Remediation = "None"
     $Output.Result.Status      = "Pass"
 }

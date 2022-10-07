@@ -36,30 +36,10 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0012'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Review Weight from 7 to 8
-Removed Severity
-Moved variables AADRolesMapping & OutputObjects from Init to Main region
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 3
-    Title                  = 'Privileged group contains guest account'
     ScriptName             = 'CR0012-GuestsWithAdminRoles'
+    Title                  = 'Privileged group contains guest account'
     Description            = 'This indicator checks whether any privileged roles have been assigned to guest accounts.'
+    CategoryId             = 3
     Weight                 = 8
     LikelihoodOfCompromise = 'External attackers covet privileged accounts, as they provide a fast track to an organization''s most critical systems. Since guest accounts represent an external entity and do not undergo the same account security as users in your tenant, assigning privileged roles to them poses a heightened risk.'
     ResultMessage          = '{COUNT} privileged user(s) found as members of privileged groups.'
@@ -80,6 +60,32 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Review Weight from 7 to 8
+Removed Severity
+Moved variables AADRolesMapping & OutputObjects from Init to Main region
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -230,7 +236,7 @@ if ($OutputObjects.count -gt 0) {
     $Output.Result.Status      = 'Fail'
 } else {
     $Output.Result.Score       = 100
-    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Message     = 'No exposure evidence'
     $Output.Result.Remediation = "None"
     $Output.Result.Status      = "Pass"
 }

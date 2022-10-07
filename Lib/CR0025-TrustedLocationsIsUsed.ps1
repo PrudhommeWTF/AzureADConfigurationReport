@@ -36,28 +36,10 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0025'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Removed Severity
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 2
-    Title                  = 'Trusted Locations are defined'
     ScriptName             = 'CR0025-TustedLocationIsUsed'
+    Title                  = 'Trusted Locations are defined'
     Description            = 'Azure Active Directory Conditional Access allows an organization to configure Named locations and configure whether those locations are trusted or untrusted. These settings provide organizations the means to specify Geographical locations for use in conditional access policies, or define actual IP addresses and IP ranges and whether or not those IP addresses and/or ranges are trusted by the organization.'
+    CategoryId             = 2
     Weight                 = 2 
     LikelihoodOfCompromise = 'Defining trusted source IP addresses or ranges helps organizations create and enforce Conditional Access Policies around those trusted or untrusted IP addresses and ranges. Users authenticating from trusted IP addresses and/or ranges may have less access restrictions or access requirements when compared to users that try to authenticate to Azure Active Directory from untrusted locations or untrusted source IP addresses/ranges.'
     ResultMessage          = 'Named Locations is not configured. It is recommanded to configure them and use them in Conditional Access Policies.'
@@ -81,6 +63,30 @@ In general, Conditional Access policies may completely prevent users from authen
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -136,7 +142,7 @@ if ($null -eq $NamedLocations) {
 } else {
     $Output.Result.Score       = 100
     $Output.Result.Data        = $NamedLocations
-    $Output.Result.Message     = 'No evidence of exposure'
+    $Output.Result.Message     = 'No exposure evidence'
     $Output.Result.Remediation = 'None'
     $Output.Result.Status      = 'Pass'
 }

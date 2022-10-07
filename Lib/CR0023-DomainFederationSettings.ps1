@@ -36,28 +36,10 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0023'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Removed Severity
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 4
-    Title                  = 'Check Domain Federation Settings'
     ScriptName             = 'CR0023-DomainFederationSettings'
+    Title                  = 'Check Domain Federation Settings'
     Description            = 'Attacker changed domain federation trust settings using Azure AD administrative permissions to configure the domain to accept authorization tokens signed by their own SAML signing certificate.'
+    CategoryId             = 4
     Weight                 = 0
     LikelihoodOfCompromise = "Domain federation configuration being compromised can result in users beeing forwarded to attackers' IDP."
     ResultMessage          = ''
@@ -78,6 +60,30 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -130,7 +136,7 @@ catch {
 
 $Output.Result.Score       = 100
 $Output.Result.Status      = 'Pass'
-$Output.Result.Message     = 'No evidence of exposure'
+$Output.Result.Message     = 'No exposure evidence'
 $Output.Result.Remediation = 'None'
 $Output.Result.Data        = $DomainFederationConfig
 #region Main

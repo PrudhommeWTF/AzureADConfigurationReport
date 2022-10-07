@@ -37,28 +37,10 @@ $Start  = Get-Date
 $MonthsToConsiderStale = 18
 $Output = @{
     ID                     = 'CR0016'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Removed Severity
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 1
-    Title                  = 'Stale Guest accounts'
     ScriptName             = 'CR0016-StaleGuestUsers'
+    Title                  = 'Stale Guest accounts'
     Description            = 'This indicator check all guest accounts in Azure AD ensuring that their invitation have been accepted'
+    CategoryId             = 1
     Weight                 = 5
     LikelihoodOfCompromise = 'Attackers that compromise an administrator account could have wide-ranging access across resources.'
     ResultMessage          = "Found {COUNT} Guest accounts that are considered staled (never validated invite or last refresh token older than $MonthsToConsiderStale months)."
@@ -79,6 +61,30 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -165,7 +171,7 @@ if ($StaleGuests.count -gt ($GuestUsers.Count * (1/3))) {
     $Output.Result.Status      = "Pass"
 } else {
     $Output.Result.Score       = 100
-    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Message     = 'No exposure evidence'
     $Output.Result.Remediation = "None"
     $Output.Result.Status      = "Pass"
 }

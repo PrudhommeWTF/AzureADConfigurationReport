@@ -36,29 +36,10 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0008'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Removed Severity
-Moved variable OutputObject from Main to Init region
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryID             = 3
-    Title                  = 'Check for risky API permissions granted to application service principals'
     ScriptName             = 'CR0008-ApplicationsWithRiskyPermissions'
+    Title                  = 'Check for risky API permissions granted to application service principals'
     Description            = 'This indicator checks if one of the following risky application roles have been assigned for API permissions: RoleManagement.ReadWrite.Directory that can directly promote to Global Admin, and AppRoleAssignment.ReadWrite.All that can grant SELF above role, thus allowing promotion to Global Admin.'
+    CategoryID             = 3
     Weight                 = 5
     LikelihoodOfCompromise = 'A malicious application administrator could use these permissions to grant administrative privileges to themself or another.'
     ResultMessage          = 'There are API permissions on application(s) which may be risky if not intended.'
@@ -79,6 +60,31 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Removed Severity
+Moved variable OutputObject from Main to Init region
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -210,7 +216,7 @@ if ($OutputObjects.Count -gt 0) {
 }
 else {
     $Output.Result.Score       = 100
-    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Message     = 'No exposure evidence'
     $Output.Result.Remediation = "None"
     $Output.Result.Status      = "Pass"
 }

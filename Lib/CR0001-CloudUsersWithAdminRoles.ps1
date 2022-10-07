@@ -36,38 +36,14 @@ Param(
 $Start  = Get-Date
 $Output = @{
     ID                     = 'CR0001'
-    ChangeLog              = @(
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.0'
-            ChangeLog = 'Initial version'
-            Date      = '09/13/2022 21:30'
-            Author    = "Thomas Prud'homme"
-        }
-        [PSCustomObject]@{
-            Version   = [Version]'1.0.0.1'
-            ChangeLog = @'
-Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
-Weight reviewed from 7 to 8
-Removed Severity
-Moved variable AADRolesMapping in Main region instead of Init
-Added return of $Output in case of Graph API connection failure
-'@
-            Date      = '09/20/2022 23:30'
-            Author    = "Thomas Prud'homme"
-        }
-    )
-    CategoryId             = 3
-    Title                  = 'Cloud accounts that have administrative roles'
     ScriptName             = 'CR0001-CloudUsersWithAdminRoles'
-    Description            = 'This indicator checks for cloud users that have administrative roles in Azure AD.'
+    Title                  = 'Cloud accounts that have permanent administrative roles'
+    Description            = 'Check Rule that looks for cloud users that have admin roles in Azure AD.'
+    CategoryId             = 3
     Weight                 = 8
     LikelihoodOfCompromise = 'The compromise of a cloud account that admin roles in AAD can result in environment being compromised.'
-    ResultMessage          = 'Found {COUNT} Privileged AAD cloud accounts.'
-    Remediation            = 'Privileged in AAD > Make sure it is not a synced account, and not a continuous role member but rather an eligible role member (use PIM with eligible roles protected with MFA when elevating).'
-    Detection              = @(
-        'Monitor for suspicious account behavior across cloud services that share account.',
-        'Monitor the activity of cloud accounts to detect abnormal or malicious behavior, such as accessing information outside of the normal function of the account or account usage at atypical hours.'
-    )
+    ResultMessage          = '{COUNT} Privileged AAD cloud accounts.'
+    Remediation            = 'Privileged in AAD > Make sure it is not a synced account, and not a permanent role member but rather an eligible role member (use PIM with eligible roles protected with MFA when elevating).'
     Permissions            = @('RoleManagement.Read.Directory', 'Directory.Read.All', 'RoleManagement.ReadWrite.Directory')
     SecurityFrameworks     = @(
         @{
@@ -84,6 +60,32 @@ Added return of $Output in case of Graph API connection failure
         Timespan    = ''
         GraphAPI    = ''
     }
+    ChangeLog              = @(
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.0.0'
+            ChangeLog = 'Initial version'
+            Date      = '09/13/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.1.0'
+            ChangeLog = @'
+Added parameter ReturnScriptMetadata and logic enable main script to pull out $Output content with out running the entire script. In order to allow automated request of Graph API Permission when generating the Azure AD App Registration the first time.
+Weight reviewed from 7 to 8
+Removed Severity
+Moved variable AADRolesMapping in Main region instead of Init
+Added return of $Output in case of Graph API connection failure
+'@
+            Date      = '09/20/2022'
+            Author    = "Thomas Prud'homme"
+        }
+        [PSCustomObject]@{
+            Version   = [Version]'1.0.2.0'
+            ChangeLog = 'Output initial hashtable re-ordering'
+            Date      = '10/07/2022'
+            Author    = "Thomas Prud'homme"
+        }
+    )
 }
 
 if ($ReturnScriptMetadata) {
@@ -200,7 +202,7 @@ if ($CloudUserAsAdmin.count -gt 0) {
     $Output.Result.Status      = 'Fail'
 } else {
     $Output.Result.Score       = 100
-    $Output.Result.Message     = "No evidence of exposure"
+    $Output.Result.Message     = 'No exposure evidence'
     $Output.Result.Remediation = "None"
     $Output.Result.Status      = "Pass"
 }
