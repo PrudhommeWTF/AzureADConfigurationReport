@@ -1,8 +1,14 @@
 # Exclude config files
 *.ini
 
-# Exclude .NET assemblies from source
-*.dll
+# Exclude HTML output files
+*.html
+
+# Exclude JSON output files
+*.json
+
+# Exclude XML output files
+*.xml
 
 # Exclude Output files
 Output/*

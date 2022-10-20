@@ -38,12 +38,12 @@ $Output = @{
     ID                     = 'CR0006'
     ScriptName             = 'CR0006-GuestInvitePermission'
     Title                  = 'Check for guests having permission to invite other guests'
-    Description            = 'This indicator checks for guests that have permission to invite other guests.'
+    Description            = 'Check Rule for Azure AD Guests having permission to invite other Guests.'
     CategoryId             = 1
     Weight                 = 5
-    LikelihoodOfCompromise = 'Allowing guests to invite other guests means that invitations can take place outside of any entitlement management in place. For more info click <a href="https://docs.microsoft.com/en-us/azure/active-directory/governance/entitlement-management-external-users" target="_blank">here.</a>'
-    ResultMessage          = 'Guests are allowed to send guest invitations.'
-    Remediation            = 'Forbid guests from sending out invitations.'
+    LikelihoodOfCompromise = 'Allowing Azure AD Guests to send invite to other external users means that invitations can take place outside of any entitlement management in place.'
+    ResultMessage          = 'All ready existing Azure AD Guests are allowed to send to external accounts invitations (future Guest).'
+    Remediation            = 'Forbid existing guest accounts from sending invitations.'
     Permissions            = @('Policy.Read.All')
     SecurityFrameworks     = @(
         @{

@@ -1,4 +1,6 @@
 # Azure AD Configuration Report
+Inspired from Semperis Purple Kngith and PingCastCloud Azure AD reports.
+
 This script will help you report the current state of your Azure AD tenant configuration in details.
 
 You only need PowerShell 3.0 and access to Microsoft Graph API endpoints (https).

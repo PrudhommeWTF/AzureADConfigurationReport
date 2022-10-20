@@ -38,11 +38,11 @@ $Output = @{
     ID                     = 'CR0009'
     ScriptName             = 'CR0009-CheckSecurityDefaults'
     Title                  = 'Security defaults not enabled'
-    Description            = 'This indicator checks whether security defaults are enabled when there are no conditional access policies configured.'
+    Description            = 'Check Rule to show if security defaults are enabled. Otherwise, if Conditional Access Policies are used and configured.'
     CategoryId             = 1
     Weight                 = 6
-    LikelihoodOfCompromise = 'As attackers constantly attempt to compromise cloud environments, it is important to maintain the highest possible security baseline for authentication. To protect the authentication process and privileged actions, security defaults are recommended for tenants that have no conditional access policies configured. Security defaults will require MFA, block legacy authentication, and require additional authentication when accessing the Azure portal, Azure Powershell, or the Azure CLI.'
-    ResultMessage          = 'There are ZERO Conditional Access Policies enabled and Security Defaults are not configured.'
+    LikelihoodOfCompromise = 'Attackers constantly attempt to compromise cloud environments, it is important to maintain the highest possible security baseline for authentication. To protect the authentication process and privileged actions, security defaults are recommended for tenants that have no conditional access policies configured. Security defaults will require MFA, block legacy authentication, and require additional authentication when accessing the Azure portal, Azure Powershell, or the Azure CLI.'
+    ResultMessage          = 'Security Defaults are not enabled and there is no Conditional Access Policies.'
     Remediation            = 'If Conditional Access policies will not be used, enable Security Defaults.'
     Permissions            = @('Policy.Read.All')
     SecurityFrameworks     = @(
@@ -115,15 +115,6 @@ catch {
 #endregion GraphAPI Connection
 
 #region Main
-<#
-    Security defaults and conditional access policies are mutually exclusive
-    In this indicator, we check:
-    Are there any enabled Conditional Access Policies?
-    - If YES, do nothing
-    - If NO, check to see if Security Defaults are enabled
-    - If YES, indicator passes
-    - If NO, indicator fails
-#>
 $GetConditionalPolicies = @{
     Method = 'GET'
     Uri = 'https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies'

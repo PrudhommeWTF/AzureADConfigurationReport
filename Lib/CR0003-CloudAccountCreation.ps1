@@ -38,11 +38,11 @@ $Output = @{
     ID                     = 'CR0003'
     ScriptName             = 'CR0003-CloudAccountCreation'
     Title                  = 'Cloud only account creation'
-    Description            = 'This indicator will provide information on how frequently are created cloud only accounts'
+    Description            = 'Check Rule to provide information on how often cloud only accounts creation happen'
     CategoryId             = 1
     Weight                 = 8
     LikelihoodOfCompromise = 'Cloud only accounts are often less managed than synchronized accounts.'
-    ResultMessage          = 'Many cloud accounts are created recently.'
+    ResultMessage          = '{COUNT} cloud users where created in the past 6 months, more than 1/3 of the overall created accounts. Too many cloud accounts are created recently.'
     Remediation            = 'Prefer usage of synchronizer acccounts or be sure to configure Azure MFA and Azure AD Conditional Access with the correct settings to secure them.'
     Permissions            = @('Directory.Read.All')
     SecurityFrameworks     = @(
@@ -115,7 +115,7 @@ catch {
 
 #region Main
 [Collections.ArrayList]$CloudAccounts = @()
-#Check if Organization is using Azure AD Connect. If not, this indicator is useless
+
 #region Get All AAD Users created within the last 6 months
 $AADFilter = @(
     "userType eq 'Member'"
@@ -169,7 +169,7 @@ $AADUsersResponse | Where-Object -FilterScript {$_.onPremisesSyncEnabled -eq ''}
 if ($CloudAccounts.Count -gt ($AADUsersResponse.Count*(1/3))) {
     $Output.Result.Score       = 0
     $Output.Result.Data        = $CloudAccounts
-    $Output.Result.Message     = '{0} cloud users where created in the past 6 months, more than 1/3 of the overall created accounts. {1}' -f $CloudAccounts.Count, $Output.ResultMessage
+    $Output.Result.Message     = $Output.ResultMessage -replace '{COUNT}', $CloudAccounts.Count
     $Output.Result.Remediation = $Output.Remediation
     $Output.Result.Status      = 'Fail'
 } else {

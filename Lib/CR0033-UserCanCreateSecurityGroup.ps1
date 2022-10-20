@@ -38,11 +38,7 @@ $Output = @{
     ID                     = 'CR0033'
     ScriptName             = 'CR0033-UserCanCreateSecurityGroup'
     Title                  = 'Check user cannot create security groups'
-    Description            = @'
-Restrict security group creation to administrators only
-
-Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
-'@
+    Description            = 'Restrict security group creation to administrators only<br><br>Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!'
     CategoryId             = 4
     Weight                 = 8 
     LikelihoodOfCompromise = 'When creating security groups is enabled, all users in the directory are allowed to create new security groups and add members to those groups. Unless a business requires this day-to-day delegation, security group creation should be restricted to administrators only.'

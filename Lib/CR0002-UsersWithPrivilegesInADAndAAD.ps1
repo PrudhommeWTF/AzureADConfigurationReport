@@ -43,10 +43,7 @@ $Output = @{
     Weight                 = 8
     LikelihoodOfCompromise = 'Compromised account with privileges in both AD and AAD can result in both environments being exposed.'
     ResultMessage          = '{COUNT} Azure AD users member of Admin Roles that are also privileged in AD'
-    Remediation            = @'
-Privileged in AD >  Do not sync to AAD.
-Privileged in AAD > Make sure it is not a synced account, and not a continuous role member but rather an eligible role member (use PIM with eligible roles protected with MFA when elevating).
-'@
+    Remediation            = 'Privileged in AD >  Do not sync to AAD.<br>Privileged in AAD > Make sure it is not a synced account, and not a continuous role member but rather an eligible role member (use PIM with eligible roles protected with MFA when elevating).'
     Permissions            = @('RoleManagement.Read.Directory', 'PrivilegedAccess.Read.AzureAD', 'Directory.Read.All', 'RoleEligibilitySchedule.Read.Directory')
     SecurityFrameworks     = @(
         @{

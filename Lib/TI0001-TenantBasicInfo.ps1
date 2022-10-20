@@ -42,7 +42,6 @@ $Output = @{
     Result     = @{
         Organization = ''
         OIDConfig    = ''
-        Domains      = ''
         OrgBranding  = ''
         Timespan     = ''
         GraphAPI     = ''

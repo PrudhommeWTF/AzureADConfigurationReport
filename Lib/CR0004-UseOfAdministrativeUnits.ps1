@@ -38,11 +38,11 @@ $Output = @{
     ID                     = 'CR0004'
     ScriptName             = 'CR0004-UseOfAdministrativeUnits'
     Title                  = 'Administrative units are not being used'
-    Description            = 'This indicator checks for the existence of administrative units. Administrative units are helpful to limit the scope of a security principle''s authority.'
+    Description            = 'Check Rules to hightlight the usage of administrative units. Administrative units allows you to limit the scope of a authority and allow delegation on limited population.'
     CategoryId             = 3
     Weight                 = 4
-    LikelihoodOfCompromise = 'Attackers that compromise an administrator account could have wide-ranging access across resources. By utilizing admninistrative units, it is possible to limit the scope of specific admins and ensure that a single compromise of credentials is constrained and does not affect the entire environment. For more info click <a href="https://docs.microsoft.com/en-us/azure/active-directory/roles/administrative-units" target="_blank">here.</a>'
-    ResultMessage          = 'There are ZERO Administrative Units created.'
+    LikelihoodOfCompromise = 'In case of compromission an administrator account could have wide-ranging access across resources. When using Admninistrative Units you can limit the scope of specific delegated admin roles and ensure that compromise of admin credentials is limited and does not affect the all tenant.'
+    ResultMessage          = 'There is no Administrative Units created.'
     Remediation            = 'Consider adding Administrative Units to limit delegation scope.'
     Permissions            = @('AdministrativeUnit.Read.All')
     SecurityFrameworks     = @(

@@ -38,15 +38,7 @@ $Output = @{
     ID                     = 'CR0031'
     ScriptName             = 'CR0031-GuestAccessRestrictions'
     Title                  = 'Guest Access permissions'
-    Description            = @'
-Limit guest user permissions.
-Limiting guest access ensures that guest accounts do not have permission for certain directory tasks, such as enumerating users, groups or other directory resources, and cannot be assigned to administrative roles in your directory.
-1. Guest users have the same access as members (most inclusive),
-2. Guest users have limited access to properties and memberships of directory objects (default value),
-3. Guest user access is restricted to properties and memberships of their own directory objects (most restrictive)
-
-Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!
-'@
+    Description            = 'Limit guest user permissions. Limiting guest access ensures that guest accounts do not have permission for certain directory tasks, such as enumerating users, groups or other directory resources, and cannot be assigned to administrative roles in your directory.<ol><li>Guest users have the same access as members (most inclusive)</li><li>Guest users have limited access to properties and memberships of directory objects (default value)</li><li>Guest user access is restricted to properties and memberships of their own directory objects (most restrictive)</li></ol><br><br>Becarefull! This Check Rule is currently using BETA endpoint in Microsoft Graph!'
     CategoryId             = 1
     Weight                 = 4
     LikelihoodOfCompromise = 'Guest may have access to User properties that you do not want to expose.'

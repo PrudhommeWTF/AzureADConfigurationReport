@@ -38,12 +38,12 @@ $Output = @{
     ID                     = 'CR0005'
     ScriptName             = 'CR0005-LegacyAuthentication'
     Title                  = 'Check if legacy authentication is allowed'
-    Description            = 'This indicator checks whether legacy authentication is blocked, either via conditional access policies or security defaults.'
+    Description            = 'Check Rules to ensure Legacy Authentication is blocked, either via Conditional Access Policies or via Security Defaults.'
     CategoryId             = 6
     Weight                 = 5
-    LikelihoodOfCompromise = 'Allowing legacy authentication increases the risk that an attacker will logon using previously compromised credentials. For more info click <a href="https://docs.microsoft.com/en-us/azure/active-directory/conditional-access/block-legacy-authentication" target="_blank">here.</a>'
-    ResultMessage          = 'There are ZERO Conditional Access Policies configured to block Legacy Authentication.'
-    Remediation            = 'To protect the authentication process, it is recommended to block legacy authentication either through conditional access policies or security defaults.'
+    LikelihoodOfCompromise = 'Keeping Legacy Authentication available increases the risk that an attacker will logon using previously compromised credentials. Microsoft is now blocking be default Legacy Authentication, since 10/01/2022, however tenant administrator where able to request a grace period until 01/01/2023.'
+    ResultMessage          = 'There is no Conditional Access Policies configured to block Legacy Authentication.'
+    Remediation            = 'It is recommended to block Legacy Authentication either through Conditional Access Policies or Security Defaults in order to rise the strength of the authentication process to your tenant.'
     Permissions            = @('Policy.Read.All')
     SecurityFrameworks     = @(
         @{
