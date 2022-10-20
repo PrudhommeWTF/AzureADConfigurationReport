@@ -799,8 +799,14 @@ Added HTML button "Back to top" in the right-end corner when scrolled down the o
 Changed pointer style when hover card title and accordion header
 Added a table list style of failed Check Rules with weight higher than 3 (severity Warning higher)
 '@.Replace([System.Environment]::NewLine, '<br>')
-Date      = '10/07/2022'
-Author    = "Thomas Prud'homme"
+        Date      = '10/07/2022'
+        Author    = "Thomas Prud'homme"
+    }
+    [PSCustomObject]@{
+        Version = [Version]'1.0.8.0'
+        ChangeLog = 'Bug fixes'
+        Date      = '10/20/2022'
+        Author    = "Thomas Prud'homme"
     }
 )
 
